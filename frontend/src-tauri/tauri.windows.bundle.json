@@ -1,0 +1,20 @@
+{
+  "app": {
+    "windows": [
+      {
+        "title": "UniPhoto",
+        "width": 1240,
+        "height": 820,
+        "minWidth": 920,
+        "minHeight": 620,
+        "transparent": false
+      }
+    ]
+  },
+  "bundle": {
+    "resources": {
+      "../../build/pyinstaller/uniphoto-backend": "backend",
+      "../../build/bundled-models": "models"
+    }
+  }
+}

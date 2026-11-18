@@ -3,9 +3,12 @@
 
 import importlib.util
 import os
+import sys
+import tempfile
 from pathlib import Path
 
-os.environ.setdefault("MPLCONFIGDIR", "/tmp/uniphoto-mpl")
+IS_WIN = sys.platform == "win32"
+os.environ.setdefault("MPLCONFIGDIR", str(Path(tempfile.gettempdir()) / "uniphoto-mpl"))
 
 from PyInstaller.utils.hooks import (
     collect_all,
@@ -58,18 +61,27 @@ hiddenimports += [
     "multipart",
 ]
 
-# Ensure MediaPipe Tasks C library remains addressable at mediapipe/tasks/c/libmediapipe.dylib
+# Ensure MediaPipe Tasks C library (libmediapipe.dylib / libmediapipe.dll / .so) remains addressable at mediapipe/tasks/c
 try:
     _mp_spec = importlib.util.find_spec("mediapipe")
     if _mp_spec and _mp_spec.origin:
-        _mp_c_lib = (
-            Path(_mp_spec.origin).resolve().parent / "tasks" / "c" / "libmediapipe.dylib"
-        )
-        if _mp_c_lib.is_file() and not any(
-            dst.replace("\\", "/") == "mediapipe/tasks/c" and Path(src).name == "libmediapipe.dylib"
-            for (src, dst) in binaries
-        ):
-            binaries.append((str(_mp_c_lib), "mediapipe/tasks/c"))
+        _mp_c_dir = Path(_mp_spec.origin).resolve().parent / "tasks" / "c"
+        if _mp_c_dir.is_dir():
+            for _mp_c_lib in sorted(_mp_c_dir.iterdir()):
+                if not _mp_c_lib.is_file():
+                    continue
+                _low_name = _mp_c_lib.name.lower()
+                if (
+                    _low_name.startswith("libmediapipe.")
+                    or ("mediapipe" in _low_name and _low_name.endswith(".dll"))
+                    or _low_name.endswith((".dylib", ".dll", ".so"))
+                ):
+                    if not any(
+                        dst.replace("\\", "/") == "mediapipe/tasks/c"
+                        and Path(src).name == _mp_c_lib.name
+                        for (src, dst) in binaries
+                    ):
+                        binaries.append((str(_mp_c_lib), "mediapipe/tasks/c"))
 except Exception:
     pass
 
@@ -138,7 +150,7 @@ exe = EXE(
     name="uniphoto-backend",
     debug=False,
     bootloader_ignore_signals=False,
-    strip=True,
+    strip=(not IS_WIN),
     upx=False,
     console=True,
     disable_windowed_traceback=False,
@@ -152,7 +164,7 @@ coll = COLLECT(
     exe,
     a.binaries,
     a.datas,
-    strip=True,
+    strip=(not IS_WIN),
     upx=False,
     upx_exclude=[],
     name="uniphoto-backend",

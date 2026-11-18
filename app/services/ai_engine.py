@@ -40,7 +40,10 @@ class OnnxMobileNetV2Extractor:
 
     def __init__(self, onnx_path: Path) -> None:
         self.onnx_path = Path(onnx_path)
-        self._net = cv2.dnn.readNetFromONNX(str(self.onnx_path))
+        try:
+            self._net = cv2.dnn.readNetFromONNX(str(self.onnx_path))
+        except Exception:
+            self._net = cv2.dnn.readNetFromONNX(self.onnx_path.read_bytes())
         self._forward_lock = threading.Lock()
 
     def __call__(self, batch: np.ndarray) -> np.ndarray:
@@ -202,8 +205,24 @@ IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
 IMAGENET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 
 
+def _imread_unicode_bgr(file_path: str) -> np.ndarray | None:
+    """Decode image via np.fromfile + cv2.imdecode so Unicode/Vietnamese paths work on Windows."""
+    try:
+        raw = np.fromfile(file_path, dtype=np.uint8)
+        if raw.size > 0:
+            decoded = cv2.imdecode(raw, cv2.IMREAD_COLOR)
+            if decoded is not None:
+                return decoded
+    except Exception:
+        pass
+    try:
+        return cv2.imread(file_path)
+    except Exception:
+        return None
+
+
 def preprocess_image_cv2(file_path: str) -> np.ndarray | None:
-    img = cv2.imread(file_path)
+    img = _imread_unicode_bgr(file_path)
     if img is not None:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     else:

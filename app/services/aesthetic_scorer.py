@@ -4,6 +4,7 @@ import math
 import os
 import ssl
 import sys
+import tempfile
 import time
 import urllib.request
 from dataclasses import dataclass
@@ -13,18 +14,19 @@ from typing import Any, Dict, List, Optional, Tuple
 # Ensure Matplotlib/MediaPipe cache writes to a persistent writable folder before importing mediapipe.
 # Note: PyInstaller's built-in pyi_rth_mplconfig hook sets MPLCONFIGDIR to an empty random temp dir
 # on every launch; override that with a bundle-keyed persistent directory so font cache builds at most once.
+_temp_root = Path(tempfile.gettempdir())
 if getattr(sys, "frozen", False):
     _bundle_key = hashlib.sha256(
         str(Path(getattr(sys, "_MEIPASS", sys.executable)).resolve()).encode("utf-8")
     ).hexdigest()[:10]
-    _frozen_mpl_dir = Path(f"/tmp/uniphoto-mpl-{_bundle_key}")
+    _frozen_mpl_dir = _temp_root / f"uniphoto-mpl-{_bundle_key}"
     try:
         _frozen_mpl_dir.mkdir(parents=True, exist_ok=True)
         os.environ["MPLCONFIGDIR"] = str(_frozen_mpl_dir)
     except OSError:
-        os.environ.setdefault("MPLCONFIGDIR", "/tmp/mplconfig")
+        os.environ.setdefault("MPLCONFIGDIR", str(_temp_root / "uniphoto-mpl"))
 else:
-    os.environ.setdefault("MPLCONFIGDIR", "/tmp/mplconfig")
+    os.environ.setdefault("MPLCONFIGDIR", str(_temp_root / "uniphoto-mpl"))
 
 import cv2
 import numpy as np
@@ -190,7 +192,22 @@ def _get_face_landmarker() -> Any:
             )
             _FACE_LANDMARKER = mp.tasks.vision.FaceLandmarker.create_from_options(options)
         except Exception:
-            _FACE_LANDMARKER = None
+            try:
+                options = mp.tasks.vision.FaceLandmarkerOptions(
+                    base_options=mp.tasks.BaseOptions(
+                        model_asset_buffer=task_path.read_bytes()
+                    ),
+                    running_mode=mp.tasks.vision.RunningMode.IMAGE,
+                    num_faces=5,
+                    min_face_detection_confidence=0.30,
+                    min_face_presence_confidence=0.30,
+                    output_face_blendshapes=True,
+                )
+                _FACE_LANDMARKER = mp.tasks.vision.FaceLandmarker.create_from_options(
+                    options
+                )
+            except Exception:
+                _FACE_LANDMARKER = None
 
     return _FACE_LANDMARKER
 
@@ -250,7 +267,18 @@ def _load_rgb_image(file_path: str, max_dim: int = 960) -> Optional[np.ndarray]:
                 rgb_img = oriented.convert("RGB")
             return np.ascontiguousarray(np.asarray(rgb_img, dtype=np.uint8))
     except Exception:
-        bgr = cv2.imread(file_path)
+        bgr = None
+        try:
+            raw = np.fromfile(file_path, dtype=np.uint8)
+            if raw.size > 0:
+                bgr = cv2.imdecode(raw, cv2.IMREAD_COLOR)
+        except Exception:
+            bgr = None
+        if bgr is None:
+            try:
+                bgr = cv2.imread(file_path)
+            except Exception:
+                bgr = None
         if bgr is None:
             return None
         h, w = bgr.shape[:2]

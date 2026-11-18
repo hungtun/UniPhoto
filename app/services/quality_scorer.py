@@ -108,6 +108,22 @@ def _compute_resolution_and_fidelity(
     return _clamp(0.72 * res_norm + 0.28 * bpp_norm)
 
 
+def _imread_unicode_bgr(file_path: str) -> Optional[np.ndarray]:
+    """Decode image via np.fromfile + cv2.imdecode so Unicode/Vietnamese paths work on Windows."""
+    try:
+        raw = np.fromfile(file_path, dtype=np.uint8)
+        if raw.size > 0:
+            decoded = cv2.imdecode(raw, cv2.IMREAD_COLOR)
+            if decoded is not None:
+                return decoded
+    except Exception:
+        pass
+    try:
+        return cv2.imread(file_path)
+    except Exception:
+        return None
+
+
 def evaluate_photo_quality(
     file_path: str,
     img: Optional[Image.Image] = None,
@@ -126,34 +142,55 @@ def evaluate_photo_quality(
             else (os.path.getsize(file_path) if os.path.exists(file_path) else 0)
         )
 
+        max_analysis_dim = 768
+        rgb: Optional[np.ndarray] = None
+        orig_w = 0
+        orig_h = 0
+
         close_after = False
-        if img is None:
-            img = Image.open(file_path)
-            close_after = True
-
         try:
-            oriented = ImageOps.exif_transpose(img)
-            orig_w, orig_h = oriented.size
+            if img is None:
+                img = Image.open(file_path)
+                close_after = True
 
-            # Chuẩn hóa kích thước phân tích thị giác về tối đa 768px để đo độ nét công bằng
-            # giữa các độ phân giải khác nhau và tối ưu tốc độ (~3-6ms/ảnh).
-            max_analysis_dim = 768
+            try:
+                oriented = ImageOps.exif_transpose(img)
+                orig_w, orig_h = oriented.size
+
+                # Chuẩn hóa kích thước phân tích thị giác về tối đa 768px để đo độ nét công bằng
+                # giữa các độ phân giải khác nhau và tối ưu tốc độ (~3-6ms/ảnh).
+                if max(orig_w, orig_h) > max_analysis_dim:
+                    scale = max_analysis_dim / float(max(orig_w, orig_h))
+                    new_size = (
+                        max(1, int(round(orig_w * scale))),
+                        max(1, int(round(orig_h * scale))),
+                    )
+                    sample = oriented.convert("RGB").resize(
+                        new_size, Image.Resampling.BILINEAR
+                    )
+                else:
+                    sample = oriented.convert("RGB")
+
+                rgb = np.asarray(sample, dtype=np.uint8)
+            finally:
+                if close_after and img is not None:
+                    img.close()
+        except Exception:
+            bgr = _imread_unicode_bgr(file_path)
+            if bgr is None:
+                raise
+            orig_h, orig_w = bgr.shape[:2]
             if max(orig_w, orig_h) > max_analysis_dim:
                 scale = max_analysis_dim / float(max(orig_w, orig_h))
-                new_size = (
-                    max(1, int(round(orig_w * scale))),
-                    max(1, int(round(orig_h * scale))),
+                bgr = cv2.resize(
+                    bgr,
+                    (
+                        max(1, int(round(orig_w * scale))),
+                        max(1, int(round(orig_h * scale))),
+                    ),
+                    interpolation=cv2.INTER_LINEAR,
                 )
-                sample = oriented.convert("RGB").resize(
-                    new_size, Image.Resampling.BILINEAR
-                )
-            else:
-                sample = oriented.convert("RGB")
-
-            rgb = np.asarray(sample, dtype=np.uint8)
-        finally:
-            if close_after:
-                img.close()
+            rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
 
         gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY).astype(np.float32)
         lum = (

@@ -12,14 +12,20 @@ import {
   STORAGE_KEY,
   Translations,
   getInitialLanguage,
-  translations,
+  getTranslations,
 } from "./translations";
 import { formatGeminiBytes } from "../utils/photoHelpers";
+import {
+  applyPlatformDataset,
+  detectRuntimeIsWindows,
+  isWindowsPlatform,
+} from "../utils/platform";
 
 interface I18nContextValue {
   lang: Language;
   setLang: (lang: Language) => void;
   toggleLang: () => void;
+  isWindows: boolean;
   t: Translations;
   formatBytes: (bytes: number) => string;
 }
@@ -28,6 +34,24 @@ const I18nContext = createContext<I18nContextValue | null>(null);
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Language>(getInitialLanguage);
+  const [isWindows, setIsWindows] = useState<boolean>(() => {
+    const initial = isWindowsPlatform();
+    applyPlatformDataset(initial);
+    return initial;
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    applyPlatformDataset(isWindows);
+    void detectRuntimeIsWindows().then((detectedWin) => {
+      if (!cancelled) {
+        setIsWindows(detectedWin);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const setLang = useCallback((next: Language) => {
     setLangState(next);
@@ -50,7 +74,10 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const t = translations[lang];
+  const t = useMemo(
+    () => getTranslations(lang, isWindows),
+    [lang, isWindows]
+  );
 
   useEffect(() => {
     document.documentElement.lang = lang;
@@ -74,10 +101,11 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
       lang,
       setLang,
       toggleLang,
+      isWindows,
       t,
       formatBytes,
     }),
-    [lang, setLang, toggleLang, t, formatBytes]
+    [lang, setLang, toggleLang, isWindows, t, formatBytes]
   );
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
@@ -90,4 +118,3 @@ export function useI18n(): I18nContextValue {
   }
   return ctx;
 }
-

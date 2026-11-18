@@ -7,9 +7,26 @@ from app.models.models import Photo
 
 def _apply_excluded_prefixes(query, excluded_prefixes: Optional[List[str]]):
     if excluded_prefixes:
+        seen_ci: set[str] = set()
         for prefix in excluded_prefixes:
-            if prefix:
-                query = query.filter(~Photo.file_path.startswith(prefix, autoescape=True))
+            if not prefix:
+                continue
+            if (
+                len(prefix) == 3
+                and prefix[0].isalpha()
+                and prefix[1] == ":"
+                and prefix[2] in ("\\", "/")
+            ):
+                low = prefix.lower()
+                if low not in seen_ci:
+                    seen_ci.add(low)
+                    query = query.filter(
+                        ~func.lower(Photo.file_path).startswith(low, autoescape=True)
+                    )
+            else:
+                query = query.filter(
+                    ~Photo.file_path.startswith(prefix, autoescape=True)
+                )
     return query
 
 

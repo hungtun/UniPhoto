@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
-import { getInitialLanguage, translations } from "../i18n/translations";
+import { getInitialLanguage, getTranslations } from "../i18n/translations";
+import { isWindowsPlatform } from "../utils/platform";
 
 const DEFAULT_API_BASE = "http://127.0.0.1:8000/api/v1";
 let cachedApiBase: string | null = null;
@@ -28,7 +29,7 @@ export async function resolveApiBase(): Promise<string> {
 }
 
 function apiText() {
-  return translations[getInitialLanguage()].api;
+  return getTranslations(getInitialLanguage(), isWindowsPlatform()).api;
 }
 
 export interface PhotoItem {

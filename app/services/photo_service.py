@@ -1,6 +1,8 @@
 import io
 import json
+import ntpath
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -16,6 +18,8 @@ from app.models.models import Photo, Cluster
 from app.repositories.photo_repository import photo_repo
 
 _HEIF_REGISTERED: bool = False
+_WIN_DRIVE_RE = re.compile(r"^[A-Za-z]:[\\/]")
+_WIN_DRIVE_ONLY_RE = re.compile(r"^[A-Za-z]:$")
 
 
 def _ensure_pil_ready():
@@ -63,10 +67,15 @@ def _serialize_photo(
         except Exception:
             parsed_tags = []
 
+    file_path_str = photo.file_path or ""
+    path_mod = ntpath if _WIN_DRIVE_RE.match(file_path_str) else os.path
+    parent_dir = path_mod.dirname(file_path_str)
+    folder_name = path_mod.basename(parent_dir) or parent_dir
+
     return {
         "id": photo.id,
-        "file_name": os.path.basename(photo.file_path),
-        "folder_name": os.path.basename(os.path.dirname(photo.file_path)),
+        "file_name": path_mod.basename(file_path_str),
+        "folder_name": folder_name,
         "file_path": photo.file_path,
         "file_size": photo.file_size,
         "width": photo.width,
@@ -137,12 +146,28 @@ def _get_unmounted_volume_name(file_path: str) -> Optional[str]:
     if not file_path:
         return None
 
-    volumes_root = _get_volumes_root()
-    forced_unmounted = {
-        v.strip().rstrip("/")
+    raw_forced = [
+        v.strip()
         for v in os.environ.get("UNIPHOTO_UNMOUNTED_VOLUMES", "").split(",")
         if v.strip()
-    }
+    ]
+
+    if _WIN_DRIVE_RE.match(file_path):
+        drive = file_path[:2].upper()
+        forced_win = {v.upper().rstrip("\\/") for v in raw_forced}
+        if drive in forced_win:
+            return drive
+        system_drive = (os.environ.get("SystemDrive", "C:").strip() or "C:").upper()[:2]
+        if (
+            sys.platform == "win32"
+            and drive != system_drive
+            and not os.path.exists(drive + "\\")
+        ):
+            return drive
+        return None
+
+    volumes_root = _get_volumes_root()
+    forced_unmounted = {v.rstrip("/") for v in raw_forced}
 
     matched_root: Optional[str] = None
     real_root = os.path.realpath(volumes_root).rstrip("/")
@@ -193,8 +218,17 @@ def _disconnected_volume_prefixes(disconnected_volumes: List[str]) -> List[str]:
     root_prefixes = _volume_root_prefixes()
     out: List[str] = []
     for vol in disconnected_volumes:
-        for rp in root_prefixes:
-            out.append(f"{rp}{vol}/")
+        if _WIN_DRIVE_ONLY_RE.match(vol):
+            drive_upper = vol.upper()
+            drive_lower = vol.lower()
+            for d in (drive_upper, drive_lower):
+                for sep in ("\\", "/"):
+                    cand = f"{d}{sep}"
+                    if cand not in out:
+                        out.append(cand)
+        else:
+            for rp in root_prefixes:
+                out.append(f"{rp}{vol}/")
     return out
 
 
@@ -204,6 +238,7 @@ def get_disconnected_volumes(db: Session) -> List[str]:
     filters = [
         Photo.file_path.startswith(rp, autoescape=True) for rp in root_prefixes
     ]
+    filters.append(Photo.file_path.op("GLOB")("[A-Za-z]:[/\\\\]*"))
     rows = db.query(Photo.file_path).filter(or_(*filters)).all()
     if not rows:
         return []
@@ -211,6 +246,15 @@ def get_disconnected_volumes(db: Session) -> List[str]:
     unmounted: set[str] = set()
     checked_cache: Dict[Tuple[str, str], Optional[str]] = {}
     for (fp,) in rows:
+        if _WIN_DRIVE_RE.match(fp):
+            drive = fp[:2].upper()
+            key = ("WIN_DRIVE", drive)
+            if key not in checked_cache:
+                checked_cache[key] = _get_unmounted_volume_name(fp)
+            if checked_cache[key] is not None:
+                unmounted.add(checked_cache[key])  # type: ignore[arg-type]
+            continue
+
         for rp in root_prefixes:
             if fp.startswith(rp):
                 rel = fp[len(rp) :]
@@ -481,10 +525,24 @@ def open_single_photo(db: Session, photo_id: int, mode: str = "preview") -> str:
         missing = photo.file_path if photo else f"ID {photo_id}"
         raise FileNotFoundError(f"File không tồn tại trên ổ cứng: {missing}")
 
-    if mode == "finder":
-        subprocess.run(["open", "-R", photo.file_path])
+    if sys.platform == "win32":
+        norm_path = os.path.normpath(photo.file_path)
+        if mode == "finder":
+            subprocess.Popen(["explorer", f"/select,{norm_path}"])
+        else:
+            os.startfile(norm_path)  # type: ignore[attr-defined]
+    elif sys.platform == "darwin":
+        if mode == "finder":
+            subprocess.run(["open", "-R", photo.file_path])
+        else:
+            subprocess.run(["open", photo.file_path])
     else:
-        subprocess.run(["open", photo.file_path])
+        target = (
+            os.path.dirname(photo.file_path)
+            if mode == "finder"
+            else photo.file_path
+        )
+        subprocess.Popen(["xdg-open", target])
     return photo.file_path
 
 
@@ -494,8 +552,19 @@ def open_multiple_photos(db: Session, photo_ids: List[int]) -> int:
     if not valid_paths:
         raise FileNotFoundError("Không tìm thấy file hợp lệ trên ổ cứng")
 
-    subprocess.run(["open", *valid_paths])
-    return len(valid_paths)
+    if sys.platform == "win32":
+        target_paths = valid_paths[:15]
+        for p in target_paths:
+            os.startfile(os.path.normpath(p))  # type: ignore[attr-defined]
+        return len(target_paths)
+    if sys.platform == "darwin":
+        subprocess.run(["open", *valid_paths])
+        return len(valid_paths)
+
+    target_paths = valid_paths[:15]
+    for p in target_paths:
+        subprocess.Popen(["xdg-open", p])
+    return len(target_paths)
 
 
 def _rebalance_after_deletion(
@@ -559,8 +628,88 @@ def _move_to_trash_dir_fallback(file_path: str, trash_dir: Path) -> None:
     shutil.move(file_path, str(dest))
 
 
+def _move_files_to_windows_recycle_bin(existing_paths: List[str]) -> int:
+    """Chuyển an toàn danh sách file ảnh vào Windows Recycle Bin qua Win32 SHFileOperationW (không xóa vĩnh viễn)."""
+    import ctypes
+    from ctypes import wintypes
+
+    class SHFILEOPSTRUCTW(ctypes.Structure):
+        if ctypes.sizeof(ctypes.c_void_p) == 4:
+            _pack_ = 1
+        _fields_ = [
+            ("hwnd", wintypes.HWND),
+            ("wFunc", wintypes.UINT),
+            ("pFrom", wintypes.LPCWSTR),
+            ("pTo", wintypes.LPCWSTR),
+            ("fFlags", wintypes.WORD),
+            ("fAnyOperationsAborted", wintypes.BOOL),
+            ("hNameMappings", ctypes.c_void_p),
+            ("lpszProgressTitle", wintypes.LPCWSTR),
+        ]
+
+    FO_DELETE = 3
+    flags = 0x0040 | 0x0010 | 0x0004 | 0x0400  # FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_SILENT | FOF_NOERRORUI
+
+    shell32 = ctypes.windll.shell32
+    shell32.SHFileOperationW.argtypes = [ctypes.POINTER(SHFILEOPSTRUCTW)]
+    shell32.SHFileOperationW.restype = ctypes.c_int
+
+    norm_paths = [os.path.normpath(os.path.abspath(p)) for p in existing_paths]
+    chunk_size = 200
+    for idx in range(0, len(norm_paths), chunk_size):
+        batch = norm_paths[idx : idx + chunk_size]
+        joined = "\0".join(batch) + "\0\0"
+        buf = ctypes.create_unicode_buffer(joined)
+        op = SHFILEOPSTRUCTW()
+        op.hwnd = None
+        op.wFunc = FO_DELETE
+        op.pFrom = ctypes.cast(buf, wintypes.LPCWSTR)
+        op.pTo = None
+        op.fFlags = flags
+        op.fAnyOperationsAborted = False
+        op.hNameMappings = None
+        op.lpszProgressTitle = None
+        shell32.SHFileOperationW(ctypes.byref(op))
+
+    ps_script = (
+        "Add-Type -AssemblyName Microsoft.VisualBasic; "
+        "[Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile("
+        "$env:UNIPHOTO_TRASH_TARGET, "
+        "'OnlyErrorDialogs', "
+        "'SendToRecycleBin')"
+    )
+    still_present: List[str] = []
+    for orig_p, norm_p in zip(existing_paths, norm_paths):
+        if os.path.exists(norm_p):
+            env = os.environ.copy()
+            env["UNIPHOTO_TRASH_TARGET"] = norm_p
+            for ps_exe in ("powershell", "pwsh"):
+                if not os.path.exists(norm_p):
+                    break
+                try:
+                    subprocess.run(
+                        [ps_exe, "-NoProfile", "-NonInteractive", "-Command", ps_script],
+                        env=env,
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
+                        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                    )
+                except (OSError, subprocess.SubprocessError):
+                    continue
+            if os.path.exists(norm_p):
+                still_present.append(orig_p)
+
+    if still_present:
+        raise OSError(
+            f"Không thể chuyển file vào Windows Recycle Bin: {still_present[0]}"
+        )
+
+    return sum(1 for p in existing_paths if not os.path.exists(p))
+
+
 def _move_files_to_trash(file_paths: List[str]) -> int:
-    """Chuyển an toàn danh sách file ảnh vào Thùng rác macOS (không xóa vĩnh viễn)."""
+    """Chuyển an toàn danh sách file ảnh vào Thùng rác hệ điều hành (macOS Trash / Windows Recycle Bin — không xóa vĩnh viễn)."""
     existing_paths = [p for p in file_paths if p and os.path.exists(p)]
     if not existing_paths:
         return 0
@@ -574,8 +723,8 @@ def _move_files_to_trash(file_paths: List[str]) -> int:
             moved += 1
         return moved
 
-    failed_from_jxa: set[str] = set()
     if sys.platform == "darwin":
+        failed_from_jxa: set[str] = set()
         abs_paths = [os.path.abspath(p) for p in existing_paths]
         chunk_size = 500
         for idx in range(0, len(abs_paths), chunk_size):
@@ -594,15 +743,26 @@ def _move_files_to_trash(file_paths: List[str]) -> int:
             except (OSError, subprocess.SubprocessError, ValueError):
                 pass
 
-    fallback_trash = Path.home() / ".Trash"
+        fallback_trash = Path.home() / ".Trash"
+        moved = 0
+        for p in existing_paths:
+            if os.path.abspath(p) in failed_from_jxa or os.path.exists(p):
+                if os.path.exists(p):
+                    _move_to_trash_dir_fallback(p, fallback_trash)
+            if not os.path.exists(p):
+                moved += 1
+        return moved
+
+    elif sys.platform == "win32":
+        return _move_files_to_windows_recycle_bin(existing_paths)
+
+    fallback_trash = Path.home() / ".local" / "share" / "Trash" / "files"
     moved = 0
     for p in existing_paths:
-        if os.path.abspath(p) in failed_from_jxa or os.path.exists(p):
-            if os.path.exists(p):
-                _move_to_trash_dir_fallback(p, fallback_trash)
+        if os.path.exists(p):
+            _move_to_trash_dir_fallback(p, fallback_trash)
         if not os.path.exists(p):
             moved += 1
-
     return moved
 
 

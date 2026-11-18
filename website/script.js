@@ -3,6 +3,8 @@ const SITE_CONFIG = {
   githubRepo: "hungtun/UniPhoto", // Đổi thành "<username>/<repo>" của bạn trên GitHub
   downloadUrlDmg: "https://github.com/hungtun/UniPhoto/releases/latest/download/UniPhoto_0.1.0_aarch64.dmg",
   downloadUrlZip: "https://github.com/hungtun/UniPhoto/releases/latest/download/UniPhoto_0.1.0_aarch64.zip",
+  downloadUrlWinExe: "https://github.com/hungtun/UniPhoto/releases/latest/download/UniPhoto_0.1.0_x64-setup.exe",
+  winSizeLabel: "~98 MB",
   githubUrl: "https://github.com/hungtun/UniPhoto",
   autoFetchLatestRelease: true,
 };
@@ -15,22 +17,28 @@ const SITE_CONFIG = {
     version: SITE_CONFIG.version,
     dmgUrl: SITE_CONFIG.downloadUrlDmg,
     zipUrl: SITE_CONFIG.downloadUrlZip,
+    winUrl: SITE_CONFIG.downloadUrlWinExe,
+    winSizeLabel: SITE_CONFIG.winSizeLabel,
+    downloadCount: 0,
     githubUrl: SITE_CONFIG.githubUrl,
   };
 
   const I18N = {
     vi: {
       meta: {
-        title: "UniPhoto — Dọn sạch ảnh trùng trên Mac",
-        description: "Ứng dụng macOS miễn phí giúp lọc ảnh trùng, gom loạt chụp liên tiếp và chọn tấm sắc nét nhất. 100% Offline.",
+        title: "UniPhoto — Dọn sạch ảnh trùng trên Mac & Windows",
+        description: "Ứng dụng miễn phí cho macOS & Windows giúp lọc ảnh trùng, gom loạt chụp liên tiếp và chọn tấm sắc nét nhất. 100% Offline.",
       },
       nav: { download: "Tải về" },
       hero: {
-        title: "Dọn sạch ảnh trùng trên Mac.",
+        title: "Dọn sạch ảnh trùng trên Mac & Windows.",
         subtitle: "Lọc ảnh trùng, gom loạt chụp liên tiếp và chọn tấm sắc nét nhất.",
         ctaDmg: "Tải cho macOS",
-        zipLink: "Bản .zip",
+        ctaWin: "Tải cho Windows",
+        zipLink: "macOS .zip",
+        reqOs: "macOS 12+ & Windows 10/11",
         reqFree: "Miễn phí & 100% Offline",
+        downloadsUnit: "lượt tải",
       },
       mockup: {
         secLibrary: "Danh mục",
@@ -71,14 +79,14 @@ const SITE_CONFIG = {
         },
       },
       features: {
-        c1Title: "Giao diện macOS gốc",
+        c1Title: "Giao diện Desktop gốc",
         c1Desc: "Ba cột trực quan, phím tắt nhanh và kéo-thả thư mục.",
         c2Title: "Lọc trùng tức thì",
         c2Desc: "Tự động giữ lại file gốc có dung lượng lớn nhất.",
         c3Title: "AI chọn ảnh đẹp",
         c3Desc: "Phát hiện mắt nhắm, mặt mờ và góc máy bị nghiêng.",
         c4Title: "An toàn & Offline",
-        c4Desc: "Chuyển vào Thùng rác macOS, không tải ảnh lên mạng.",
+        c4Desc: "Chuyển vào Thùng rác hệ thống, không tải ảnh lên mạng.",
       },
       install: {
         title: "Mở lần đầu trên macOS",
@@ -86,20 +94,23 @@ const SITE_CONFIG = {
         btnCopy: "Sao chép",
         btnCopied: "Đã chép ✓",
       },
-      footer: { note: "Miễn phí cho macOS" },
+      footer: { note: "Miễn phí cho macOS & Windows" },
     },
     en: {
       meta: {
-        title: "UniPhoto — Clean duplicate photos on Mac",
-        description: "Free native macOS app to find exact duplicates, group burst shots, and keep your sharpest frame. 100% Offline.",
+        title: "UniPhoto — Clean duplicate photos on Mac & Windows",
+        description: "Free desktop app for macOS & Windows to find exact duplicates, group burst shots, and keep your sharpest frame. 100% Offline.",
       },
       nav: { download: "Download" },
       hero: {
-        title: "Clean duplicate photos on Mac.",
+        title: "Clean duplicate photos on Mac & Windows.",
         subtitle: "Find exact duplicates, group burst shots, and keep your sharpest frame.",
         ctaDmg: "Download for macOS",
-        zipLink: "Direct .zip",
+        ctaWin: "Download for Windows",
+        zipLink: "macOS .zip",
+        reqOs: "macOS 12+ & Windows 10/11",
         reqFree: "Free & 100% Offline",
+        downloadsUnit: "downloads",
       },
       mockup: {
         secLibrary: "Library",
@@ -140,14 +151,14 @@ const SITE_CONFIG = {
         },
       },
       features: {
-        c1Title: "Native macOS UI",
+        c1Title: "Native Desktop UI",
         c1Desc: "Clean split-view, keyboard shortcuts, and folder drag & drop.",
         c2Title: "Instant Duplicates",
         c2Desc: "Automatically keeps the largest original file.",
         c3Title: "Smart Burst AI",
         c3Desc: "Spots closed eyes, blurry faces, and tilted horizons.",
         c4Title: "Safe & 100% Offline",
-        c4Desc: "Moves to macOS Trash. Photos never leave your Mac.",
+        c4Desc: "Moves to Trash / Recycle Bin. 100% local.",
       },
       install: {
         title: "First launch on macOS",
@@ -155,7 +166,7 @@ const SITE_CONFIG = {
         btnCopy: "Copy",
         btnCopied: "Copied ✓",
       },
-      footer: { note: "Free for macOS" },
+      footer: { note: "Free for macOS & Windows" },
     },
   };
 
@@ -285,6 +296,7 @@ const SITE_CONFIG = {
       const val = getNested(dict, el.getAttribute("data-i18n-content"));
       if (typeof val === "string") el.setAttribute("content", val);
     });
+    renderDownloadCount();
     renderMockup();
   }
 
@@ -456,11 +468,53 @@ const SITE_CONFIG = {
     if (trashBtnLabelEl) trashBtnLabelEl.textContent = `${md.moveToTrashPrefix} (${fmtMb(selectedBytesMb)})`;
   }
 
+  function applyVisitorOsHighlight() {
+    const isWin = typeof navigator !== "undefined" && typeof navigator.userAgent === "string" && navigator.userAgent.includes("Win");
+    if (!isWin) return;
+    const heroActions = document.getElementById("heroActions");
+    const dmgBtn = heroActions ? heroActions.querySelector("[data-download-dmg]") : null;
+    const winBtn = heroActions ? heroActions.querySelector("[data-download-win]") : null;
+    if (dmgBtn && winBtn) {
+      dmgBtn.classList.remove("btn-primary");
+      dmgBtn.classList.add("btn-secondary");
+      winBtn.classList.remove("btn-secondary");
+      winBtn.classList.add("btn-primary");
+      heroActions.insertBefore(winBtn, dmgBtn);
+    }
+    const navBtn = document.querySelector(".site-nav [data-nav-download]");
+    if (navBtn) {
+      navBtn.removeAttribute("data-download-dmg");
+      navBtn.setAttribute("data-download-win", "");
+      const navIcon = navBtn.querySelector("svg");
+      if (navIcon) {
+        navIcon.innerHTML = '<rect x="3" y="3" width="8.2" height="8.2" rx="1.2"/><rect x="12.8" y="3" width="8.2" height="8.2" rx="1.2"/><rect x="3" y="12.8" width="8.2" height="8.2" rx="1.2"/><rect x="12.8" y="12.8" width="8.2" height="8.2" rx="1.2"/>';
+      }
+    }
+  }
+
+  function renderDownloadCount() {
+    const wrap = document.getElementById("heroDownloadsWrap");
+    const textEl = document.getElementById("heroDownloadsText");
+    if (!wrap || !textEl) return;
+    if (releaseState.downloadCount > 0) {
+      const formatted = releaseState.downloadCount.toLocaleString(currentLang === "vi" ? "vi-VN" : "en-US");
+      textEl.textContent = `${formatted} ${I18N[currentLang].hero.downloadsUnit}`;
+      wrap.hidden = false;
+    } else {
+      wrap.hidden = true;
+    }
+  }
+
   function applyReleaseStateToDom() {
     document.querySelectorAll("[data-download-dmg]").forEach((el) => el.setAttribute("href", releaseState.dmgUrl));
     document.querySelectorAll("[data-download-zip]").forEach((el) => el.setAttribute("href", releaseState.zipUrl));
+    document.querySelectorAll("[data-download-win]").forEach((el) => {
+      el.setAttribute("href", releaseState.winUrl);
+      el.setAttribute("title", `Windows 10/11 (x64) • ${releaseState.winSizeLabel}`);
+    });
     document.querySelectorAll("[data-github-link]").forEach((el) => el.setAttribute("href", releaseState.githubUrl));
     document.querySelectorAll("[data-release-version]").forEach((el) => { el.textContent = releaseState.version; });
+    renderDownloadCount();
   }
 
   async function resolveLatestGitHubRelease() {
@@ -478,8 +532,22 @@ const SITE_CONFIG = {
       if (release && Array.isArray(release.assets)) {
         const dmg = release.assets.find((a) => a && typeof a.name === "string" && a.name.toLowerCase().endsWith(".dmg"));
         const zip = release.assets.find((a) => a && typeof a.name === "string" && a.name.toLowerCase().endsWith(".zip"));
+        const win =
+          release.assets.find((a) => a && typeof a.name === "string" && /\.exe$/i.test(a.name)) ||
+          release.assets.find((a) => a && typeof a.name === "string" && /\.(exe|msi)$/i.test(a.name));
         if (dmg && dmg.browser_download_url) releaseState.dmgUrl = dmg.browser_download_url;
         if (zip && zip.browser_download_url) releaseState.zipUrl = zip.browser_download_url;
+        if (win && win.browser_download_url) {
+          releaseState.winUrl = win.browser_download_url;
+          if (typeof win.size === "number" && win.size > 0) {
+            releaseState.winSizeLabel = `~${Math.max(1, Math.round(win.size / (1024 * 1024)))} MB`;
+          }
+        }
+        const totalDownloads = release.assets.reduce(
+          (sum, a) => sum + (a && typeof a.download_count === "number" ? a.download_count : 0),
+          0
+        );
+        if (totalDownloads > 0) releaseState.downloadCount = totalDownloads;
       }
       applyReleaseStateToDom();
     } catch {}
@@ -603,6 +671,7 @@ const SITE_CONFIG = {
   }
 
   document.addEventListener("DOMContentLoaded", () => {
+    applyVisitorOsHighlight();
     applyReleaseStateToDom();
     bindEvents();
     applyLanguage(currentLang);

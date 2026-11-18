@@ -23,7 +23,7 @@ export default function ScanningPage({
   isCancelling,
   onCancelScan,
 }: ScanningPageProps) {
-  const { lang, t } = useI18n();
+  const { lang, t, isWindows } = useI18n();
   const localizedFile = localizeBackendFileStatus(progress.current_file, lang);
 
   const badgeLabel =
@@ -40,10 +40,12 @@ export default function ScanningPage({
 
   return (
     <div className="h-screen w-screen bg-[#161618] text-[#F2F2F7] flex flex-col justify-between overflow-hidden select-none">
-      {/* Top macOS Overlay Titlebar with Traffic-Light Safe Zone */}
+      {/* Top Titlebar with macOS Traffic-Light Safe Zone / Windows Standard Padding */}
       <header
         data-tauri-drag-region
-        className="h-[46px] pl-[80px] pr-4 bg-[#1C1C1E] border-b border-white/[0.07] flex items-center justify-between shrink-0"
+        className={`h-[46px] ${
+          isWindows ? "pl-5" : "pl-[80px]"
+        } pr-4 bg-[#1C1C1E] border-b border-white/[0.07] flex items-center justify-between shrink-0`}
       >
         <div
           data-tauri-drag-region

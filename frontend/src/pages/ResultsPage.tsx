@@ -106,7 +106,7 @@ export default function ResultsPage({
   onRunAestheticScore,
   onSmartCleanup,
 }: ResultsPageProps) {
-  const { lang, t, formatBytes } = useI18n();
+  const { lang, t, formatBytes, isWindows } = useI18n();
 
   const [activeGroupKey, setActiveGroupKey] = useState<string>("");
   const [activePhotoId, setActivePhotoId] = useState<number | null>(null);
@@ -707,12 +707,20 @@ export default function ResultsPage({
           PANE 1: NATIVE MACOS VIBRANCY SOURCE-LIST SIDEBAR
          ============================================================ */}
       {!isSidebarCollapsed && (
-        <aside className="w-[232px] shrink-0 flex flex-col justify-between bg-[#252528]/78 backdrop-blur-2xl border-r border-white/[0.09]">
+        <aside
+          className={`uniphoto-sidebar w-[232px] shrink-0 flex flex-col justify-between border-r border-white/[0.09] ${
+            isWindows
+              ? "bg-[#202024]"
+              : "bg-[#252528]/78 backdrop-blur-2xl"
+          }`}
+        >
           <div>
-            {/* Traffic-Light Safe Zone + Sidebar Collapse Toggle */}
+            {/* Traffic-Light Safe Zone (macOS) / Standard Padding (Windows) + Sidebar Collapse Toggle */}
             <div
               data-tauri-drag-region
-              className="h-[46px] pl-[78px] pr-3 flex items-center justify-end shrink-0"
+              className={`h-[46px] ${
+                isWindows ? "pl-3.5" : "pl-[78px]"
+              } pr-3 flex items-center justify-end shrink-0`}
             >
               <button
                 type="button"
@@ -914,7 +922,7 @@ export default function ResultsPage({
           <div
             data-tauri-drag-region
             className={`min-h-[34px] flex items-center gap-2 ${
-              isSidebarCollapsed ? "pl-[76px]" : ""
+              isSidebarCollapsed && !isWindows ? "pl-[76px]" : ""
             }`}
           >
             {isSidebarCollapsed && (
@@ -980,7 +988,7 @@ export default function ResultsPage({
                 </button>
               ) : (
                 <kbd className="text-[10.5px] text-[#636366] font-sans shrink-0 ml-1 pointer-events-none">
-                  ⌘F
+                  {isWindows ? "Ctrl+F" : "⌘F"}
                 </kbd>
               )}
             </div>
@@ -1375,7 +1383,7 @@ export default function ResultsPage({
                   <div className="space-y-1.5 text-[11.5px]">
                     {[
                       {
-                        keys: ["⌘F"],
+                        keys: [isWindows ? "Ctrl+F" : "⌘F"],
                         desc: t.results.shortcutSearchFocus,
                       },
                       {
@@ -1403,7 +1411,7 @@ export default function ResultsPage({
                         desc: t.results.shortcutRevealFinder,
                       },
                       {
-                        keys: ["⌘A"],
+                        keys: [isWindows ? "Ctrl+A" : "⌘A"],
                         desc: t.results.shortcutAutoSelect,
                       },
                       {

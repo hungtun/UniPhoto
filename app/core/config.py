@@ -26,6 +26,16 @@ def resolve_data_dir() -> Path:
     if is_packaged_runtime():
         if sys.platform == "darwin":
             return Path.home() / "Library" / "Application Support" / "com.hung.uniphoto"
+        if sys.platform == "win32":
+            local_app_data = os.environ.get("LOCALAPPDATA", "").strip()
+            if local_app_data:
+                normalized = (
+                    local_app_data.replace("\\", "/")
+                    if os.name != "nt"
+                    else local_app_data
+                )
+                return Path(normalized) / "UniPhoto"
+            return (Path.home() / "AppData" / "Local") / "UniPhoto"
         return Path.home() / ".uniphoto"
 
     return BASE_DIR / "data"

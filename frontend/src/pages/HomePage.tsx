@@ -34,10 +34,10 @@ export default function HomePage({
   onStartScan,
   onOpenResults,
 }: HomePageProps) {
-  const { t, formatBytes } = useI18n();
+  const { t, formatBytes, isWindows } = useI18n();
 
   const folderShortName = folderPath
-    ? folderPath.split("/").filter(Boolean).pop() || folderPath
+    ? folderPath.split(/[\\/]/).filter(Boolean).pop() || folderPath
     : "";
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -74,10 +74,12 @@ export default function HomePage({
       onDrop={handleDrop}
       className="h-screen w-screen bg-[#161618] text-[#F2F2F7] flex flex-col justify-between overflow-hidden select-none"
     >
-      {/* Top macOS Overlay Titlebar with Traffic-Light Safe Zone */}
+      {/* Top Titlebar with macOS Traffic-Light Safe Zone / Windows Standard Padding */}
       <header
         data-tauri-drag-region
-        className="h-[46px] pl-[80px] pr-4 bg-[#1C1C1E] border-b border-white/[0.07] flex items-center justify-between shrink-0"
+        className={`h-[46px] ${
+          isWindows ? "pl-5" : "pl-[80px]"
+        } pr-4 bg-[#1C1C1E] border-b border-white/[0.07] flex items-center justify-between shrink-0`}
       >
         <div
           data-tauri-drag-region

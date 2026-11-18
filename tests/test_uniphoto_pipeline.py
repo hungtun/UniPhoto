@@ -30,6 +30,7 @@ from app.models.models import Cluster, Photo
 from app.services.aesthetic_scorer import (
     CANONICAL_AESTHETIC_TAGS,
     _resolve_face_task_path,
+    evaluate_photo_aesthetics,
     score_clusters_aesthetics,
 )
 from app.services.ai_engine import (
@@ -41,6 +42,7 @@ from app.services.ai_engine import (
     preprocess_image_cv2,
 )
 from app.services.photo_service import (
+    _get_unmounted_volume_name,
     _serialize_photo,
     list_ai_clusters,
     list_duplicate_groups,
@@ -48,6 +50,10 @@ from app.services.photo_service import (
     remove_photo,
 )
 from app.services.progress_tracker import get_progress, request_cancel, reset_cancel
+from app.services.quality_scorer import (
+    _imread_unicode_bgr as quality_imread_unicode_bgr,
+    evaluate_photo_quality,
+)
 from app.services.scanner import calculate_phash, scan_directory
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -1509,6 +1515,179 @@ class TestUniPhotoPipeline(unittest.TestCase):
             self.assertEqual(onnx_clusters_snapshot, pt_clusters_snapshot)
         finally:
             ai_engine_mod._FEATURE_EXTRACTOR = prev_extractor
+
+    def test_11_windows_cross_platform_support(self) -> None:
+        # 1) resolve_data_dir() on win32 with LOCALAPPDATA when UNIPHOTO_PACKAGED=1
+        env_keys = (
+            "UNIPHOTO_DATA_DIR",
+            "UNIPHOTO_PACKAGED",
+            "LOCALAPPDATA",
+            "SQLITE_DB_PATH",
+        )
+        saved_env = {k: os.environ.get(k) for k in env_keys}
+        try:
+            for k in env_keys:
+                os.environ.pop(k, None)
+
+            os.environ["UNIPHOTO_PACKAGED"] = "1"
+            os.environ["LOCALAPPDATA"] = "C:\\Users\\Test\\AppData\\Local"
+            with patch.object(sys, "platform", "win32"):
+                self.assertEqual(
+                    resolve_data_dir(),
+                    Path("C:/Users/Test/AppData/Local") / "UniPhoto",
+                )
+                os.environ.pop("LOCALAPPDATA", None)
+                self.assertEqual(
+                    resolve_data_dir(),
+                    (Path.home() / "AppData" / "Local") / "UniPhoto",
+                )
+        finally:
+            for k, val in saved_env.items():
+                if val is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = val
+
+        # 2) Unicode / Vietnamese folder & filename decoding through ai_engine, quality_scorer & aesthetic_scorer
+        vn_dir = self.photos_dir / "Thư mục Ảnh Đà Lạt"
+        vn_dir.mkdir(parents=True, exist_ok=True)
+        vn_photo_1 = vn_dir / "Ảnh_Đẹp_01.jpg"
+        vn_photo_2 = vn_dir / "Ảnh_Đẹp_02_Nghiêng.jpg"
+        _render_sailboat_horizon_frame(tilt_deg=0.0, shift_x=0).save(
+            vn_photo_1, format="JPEG", quality=86
+        )
+        _render_sailboat_horizon_frame(tilt_deg=-6.5, shift_x=18).save(
+            vn_photo_2, format="JPEG", quality=98
+        )
+
+        # Simulate Windows narrow ANSI cv2.imread returning None on Vietnamese paths
+        with patch("cv2.imread", return_value=None):
+            emb_tensor = preprocess_image_cv2(str(vn_photo_1))
+            self.assertIsNotNone(emb_tensor)
+            assert emb_tensor is not None
+            self.assertEqual(emb_tensor.shape, (3, 224, 224))
+
+            bgr_fallback = quality_imread_unicode_bgr(str(vn_photo_1))
+            self.assertIsNotNone(bgr_fallback)
+            assert bgr_fallback is not None
+            self.assertEqual(bgr_fallback.shape[:2], (720, 960))
+
+            q_metrics = evaluate_photo_quality(str(vn_photo_1))
+            self.assertIsNotNone(q_metrics)
+            assert q_metrics is not None
+            self.assertGreater(q_metrics.quality_score, 0.0)
+
+            a_metrics = evaluate_photo_aesthetics(
+                str(vn_photo_1), quality_score=q_metrics.quality_score
+            )
+            self.assertIsNotNone(a_metrics)
+            assert a_metrics is not None
+            self.assertGreater(a_metrics.aesthetic_score, 0.0)
+
+        scan_res = scan_directory(str(vn_dir), self.db)
+        self.assertEqual(scan_res["total_found"], 2)
+        self.assertEqual(scan_res["errors_count"], 0)
+        cluster_res = cluster_unassigned_photos(self.db)
+        self.assertEqual(cluster_res["clusters_created"], 1)
+        score_res = score_clusters_aesthetics(self.db)
+        self.assertEqual(score_res["photos_scored"], 2)
+
+        # 3) Windows unmounted removable drive-letter protection ("E:\Photos\IMG_001.jpg")
+        os.environ["UNIPHOTO_UNMOUNTED_VOLUMES"] = "E:"
+        self.assertEqual(
+            _get_unmounted_volume_name("E:\\Photos\\IMG_001.jpg"), "E:"
+        )
+        self.assertEqual(
+            _get_unmounted_volume_name("e:/Photos/IMG_002.jpg"), "E:"
+        )
+
+        win_cluster = Cluster()
+        self.db.add(win_cluster)
+        self.db.flush()
+
+        win_photos = [
+            Photo(
+                file_path="E:\\Photos\\IMG_001.jpg",
+                file_size=5_200_000,
+                width=4032,
+                height=3024,
+                phash="ab" * 32,
+                status="keep",
+            ),
+            Photo(
+                file_path="E:\\Photos\\IMG_001_copy.jpg",
+                file_size=2_100_000,
+                width=4032,
+                height=3024,
+                phash="ab" * 32,
+                status="exact_duplicate",
+            ),
+            Photo(
+                file_path="E:\\Bursts\\IMG_010.jpg",
+                file_size=6_400_000,
+                width=4032,
+                height=3024,
+                phash="cd" * 32,
+                status="keep",
+                cluster_id=win_cluster.id,
+                quality_score=90.2,
+                aesthetic_score=91.4,
+                composition_score=92.0,
+            ),
+            Photo(
+                file_path="E:\\Bursts\\IMG_011.jpg",
+                file_size=6_100_000,
+                width=4032,
+                height=3024,
+                phash="ef" * 32,
+                status="keep",
+                cluster_id=win_cluster.id,
+                quality_score=82.0,
+                aesthetic_score=64.5,
+                composition_score=44.0,
+            ),
+        ]
+        self.db.add_all(win_photos)
+        self.db.flush()
+        win_cluster.best_photo_id = win_photos[2].id
+        self.db.commit()
+
+        total_photos_before = self.db.query(Photo).count()
+        total_clusters_before = self.db.query(Cluster).count()
+
+        dup_payload = list_duplicate_groups(self.db)
+        sim_payload = list_ai_clusters(self.db)
+        self.assertEqual(dup_payload["disconnected_volumes"], ["E:"])
+        self.assertEqual(dup_payload["total_groups"], 0)
+        self.assertEqual(sim_payload["disconnected_volumes"], ["E:"])
+        self.assertEqual(sim_payload["total_clusters"], 1)  # Only mounted vn_dir cluster shown
+
+        # Ensure all 4 offline E:\ photos & their cluster/scores survived cleanup_missing_photos()
+        self.db.expire_all()
+        self.assertEqual(self.db.query(Photo).count(), total_photos_before)
+        self.assertEqual(self.db.query(Cluster).count(), total_clusters_before)
+        e_drive_rows = (
+            self.db.query(Photo)
+            .filter(Photo.file_path.startswith("E:\\"))
+            .all()
+        )
+        self.assertEqual(len(e_drive_rows), 4)
+
+        # 4) _serialize_photo on Windows root path "D:\IMG_001.jpg" produces non-empty folder_name
+        root_photo = Photo(
+            id=999,
+            file_path="D:\\IMG_001.jpg",
+            file_size=3_456_789,
+            width=4032,
+            height=3024,
+            status="keep",
+        )
+        serialized_root = _serialize_photo(
+            root_photo, is_best=True, include_scores=False
+        )
+        self.assertEqual(serialized_root["file_name"], "IMG_001.jpg")
+        self.assertTrue(bool(serialized_root["folder_name"].strip()))
+        self.assertEqual(serialized_root["folder_name"], "D:\\")
 
 
 if __name__ == "__main__":

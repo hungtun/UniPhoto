@@ -49,13 +49,23 @@ type ToastState =
     };
 
 function resolveDroppedFolderPath(rawPath: string): string {
-  const trimmed = rawPath.replace(/\/+$/, "");
+  if (!rawPath) return rawPath;
+  if (/^[A-Za-z]:[\\/]+$/.test(rawPath)) {
+    return `${rawPath.slice(0, 2)}\\`;
+  }
+  if (/^\/+$/.test(rawPath)) {
+    return "/";
+  }
+  const trimmed = rawPath.replace(/[\\/]+$/, "");
   if (!trimmed) return rawPath;
   if (/\.(jpe?g|png|heic|heif)$/i.test(trimmed)) {
     const lastSlash = Math.max(
       trimmed.lastIndexOf("/"),
       trimmed.lastIndexOf("\\")
     );
+    if (lastSlash === 2 && /^[A-Za-z]:/.test(trimmed)) {
+      return `${trimmed.slice(0, 2)}\\`;
+    }
     if (lastSlash > 0) {
       return trimmed.slice(0, lastSlash);
     }
@@ -67,7 +77,7 @@ function resolveDroppedFolderPath(rawPath: string): string {
 }
 
 export default function App() {
-  const { t, formatBytes } = useI18n();
+  const { t, formatBytes, isWindows } = useI18n();
 
   const [screen, setScreen] = useState<ScreenMode>("home");
   const [backendReady, setBackendReady] = useState<boolean>(false);
@@ -788,7 +798,9 @@ export default function App() {
         <div className="h-screen w-screen bg-[#161618] text-[#F2F2F7] flex flex-col justify-between overflow-hidden select-none">
           <header
             data-tauri-drag-region
-            className="h-[46px] pl-[80px] pr-4 bg-[#1C1C1E] border-b border-white/[0.07] flex items-center justify-between shrink-0"
+            className={`h-[46px] ${
+              isWindows ? "pl-5" : "pl-[80px]"
+            } pr-4 bg-[#1C1C1E] border-b border-white/[0.07] flex items-center justify-between shrink-0`}
           >
             <div
               data-tauri-drag-region

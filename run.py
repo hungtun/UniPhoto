@@ -13,18 +13,24 @@ from pathlib import Path
 
 def _configure_mpl_cache_dir() -> None:
     """Configure a persistent writable cache dir for dev/frozen runs."""
+    temp_root = Path(tempfile.gettempdir())
     if getattr(sys, "frozen", False):
         bundle_key = hashlib.sha256(
             str(Path(getattr(sys, "_MEIPASS", sys.executable)).resolve()).encode("utf-8")
         ).hexdigest()[:10]
-        mpl_dir = Path(f"/tmp/uniphoto-mpl-{bundle_key}")
+        mpl_dir = temp_root / f"uniphoto-mpl-{bundle_key}"
         try:
             mpl_dir.mkdir(parents=True, exist_ok=True)
             os.environ["MPLCONFIGDIR"] = str(mpl_dir)
             return
         except OSError:
             pass
-    os.environ.setdefault("MPLCONFIGDIR", "/tmp/uniphoto-mpl")
+    default_mpl_dir = temp_root / "uniphoto-mpl"
+    try:
+        default_mpl_dir.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        pass
+    os.environ.setdefault("MPLCONFIGDIR", str(default_mpl_dir))
 
 
 _configure_mpl_cache_dir()
@@ -33,13 +39,35 @@ _configure_mpl_cache_dir()
 def _is_pid_alive(pid: int) -> bool:
     if pid <= 0:
         return False
-    try:
-        os.kill(pid, 0)
-        return True
-    except PermissionError:
-        return True
-    except OSError:
-        return False
+    if sys.platform == "win32":
+        import ctypes
+        from ctypes import wintypes
+
+        SYNCHRONIZE = 0x00100000
+        WAIT_TIMEOUT = 0x00000102
+        kernel32 = ctypes.windll.kernel32
+        kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+        kernel32.OpenProcess.restype = wintypes.HANDLE
+        kernel32.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+        kernel32.WaitForSingleObject.restype = wintypes.DWORD
+        kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+        kernel32.CloseHandle.restype = wintypes.BOOL
+
+        handle = kernel32.OpenProcess(SYNCHRONIZE, False, pid)
+        if not handle:
+            return False
+        try:
+            return int(kernel32.WaitForSingleObject(handle, 0)) == WAIT_TIMEOUT
+        finally:
+            kernel32.CloseHandle(handle)
+    else:
+        try:
+            os.kill(pid, 0)
+            return True
+        except PermissionError:
+            return True
+        except OSError:
+            return False
 
 
 def _start_parent_watchdog(parent_pid: int) -> None:
@@ -48,13 +76,17 @@ def _start_parent_watchdog(parent_pid: int) -> None:
     def _watch() -> None:
         while True:
             time.sleep(2.0)
-            current_ppid = os.getppid()
-            if current_ppid == 1:
-                os._exit(0)
-            if initial_ppid == parent_pid and current_ppid != parent_pid:
-                os._exit(0)
-            if not _is_pid_alive(parent_pid):
-                os._exit(0)
+            if sys.platform == "win32":
+                if not _is_pid_alive(parent_pid):
+                    os._exit(0)
+            else:
+                current_ppid = os.getppid()
+                if current_ppid == 1:
+                    os._exit(0)
+                if initial_ppid == parent_pid and current_ppid != parent_pid:
+                    os._exit(0)
+                if not _is_pid_alive(parent_pid):
+                    os._exit(0)
 
     watcher = threading.Thread(
         target=_watch, name="uniphoto-parent-watchdog", daemon=True

@@ -28,17 +28,18 @@ run.py                             # Uvicorn entrypoint (freeze_support, HOST/PO
 uniphoto_backend.spec              # Slim PyInstaller --onedir spec (~268 MB; excludes torch/scipy/matplotlib/sklearn/imagehash)
 scripts/
 ├── build_macos_app.sh             # One-command slim macOS .app (~288 MB) & .dmg (~100 MB) builder (rsync -a, strip -x, codesign, hdiutil)
+├── build_windows_app.ps1          # One-command slim Windows 10/11 NSIS .exe (~98 MB) & .msi builder (+ .github/workflows/build-windows.yml CI)
 ├── export_mobilenet_v2_onnx.py    # Offline float32 Conv+BN-folded ONNX exporter & cv2.dnn validator (min_cos >= 0.999999)
 └── pyi_rth_stub_unused.py         # PyInstaller runtime hook stubbing unused matplotlib.* imports in MediaPipe drawing_utils
 tests/
 ├── __init__.py
-└── test_uniphoto_pipeline.py      # Isolated 10-test stdlib unittest suite (:memory: SQLite + ONNX/DCT equivalence)
+└── test_uniphoto_pipeline.py      # Isolated 11-test stdlib unittest suite (:memory: SQLite + ONNX/DCT + win32 cross-platform)
 ```
 
 > **Data Directory & Offline Model Assets (`config.py`, `UNIPHOTO_MODELS_DIR`, `data/models/`):**
-> - `app/core/config.py` resolves `DATA_DIR` in strict priority order so packaged `.app` bundles never attempt to write inside read-only `/Applications/UniPhoto.app`:
+> - `app/core/config.py` resolves `DATA_DIR` in strict priority order so packaged bundles never attempt to write inside read-only install directories:
 >   1. `UNIPHOTO_DATA_DIR` environment variable (expanded via `expanduser()`).
->   2. `~/Library/Application Support/com.hung.uniphoto` on macOS (fallback `~/.uniphoto`) when `getattr(sys, "frozen", False)` is true or `UNIPHOTO_PACKAGED == "1"`.
+>   2. `~/Library/Application Support/com.hung.uniphoto` on macOS (`darwin`), `%LOCALAPPDATA%\UniPhoto` on Windows (`win32`), or `~/.uniphoto` elsewhere when `getattr(sys, "frozen", False)` is true or `UNIPHOTO_PACKAGED == "1"`.
 >   3. `BASE_DIR / "data"` in local dev & unit test mode (preserving `data/uniphoto.db` untouched).
 > - Both `mobilenet_v2.onnx` (`8.4 MB`, `ai_engine.py`) and `face_landmarker.task` (`3.6 MB`, `aesthetic_scorer.py`) resolve offline-first in order: `UNIPHOTO_MODELS_DIR` (`UniPhoto.app/Contents/Resources/models` when packaged) -> `settings.BUNDLED_MODELS_DIR` -> `Path(settings.DATA_DIR) / "models"` -> repo `data/models` (with optional dev-only `.pth`/PyTorch fallback in `ai_engine.py` when not frozen, and automatic 100% offline OpenCV Haar cascade / pure-CV face & eye fallback if `face_landmarker.task` is unavailable). UniPhoto **never** downloads or initializes `pose_landmarker_lite.task`.
 
@@ -147,7 +148,7 @@ SQLite runs with `PRAGMA journal_mode=WAL`, `PRAGMA synchronous=NORMAL`, and `PR
 - **One-Command Symlink-Preserving Build (`bash scripts/build_macos_app.sh`):**
   - Checks `.venv`, Node.js (`^20.19.0 || >=22.12.0`), `npm`, `cargo`, `rsync`, and `codesign`, stages offline `face_landmarker.task` (`3.6 MB`) + `mobilenet_v2.onnx` (`8.4 MB`), builds `--onedir` `build/pyinstaller/uniphoto-backend` (`~268 MB`) with `.dylib` relative-symlink deduplication and `strip -x`, runs `npm --prefix frontend run tauri build -- --bundles app` (`tauri.bundle.json` kept `{}` to prevent Tauri resource copying from dereferencing `.dylib` symlinks into `+600 MB` duplicate copies), syncs `backend/` and `models/` into `UniPhoto.app/Contents/Resources/` via `rsync -a --delete`, applies ad-hoc `codesign --force --deep --sign -` + `codesign --verify --deep --strict` + signed in-app `--self-test` (`~288 MB` `UniPhoto.app`, down `~80%` from `~1.48 GB`), and creates `UniPhoto_0.1.0_<arch>.dmg` via `hdiutil create -format UDZO -imagekey zlib-level=9` (`~100 MB`).
 
-### 8. Automated Pipeline Test Suite (`tests/test_uniphoto_pipeline.py` — `10/10` Tests)
+### 8. Automated Pipeline Test Suite (`tests/test_uniphoto_pipeline.py` — `11/11` Tests)
 - Uses stdlib `unittest` with an isolated in-memory SQLite engine (`sqlite:///:memory:`), `tempfile.TemporaryDirectory()`, and `os.environ["UNIPHOTO_TRASH_DIR"]` (plus `UNIPHOTO_VOLUMES_ROOT` / `UNIPHOTO_UNMOUNTED_VOLUMES` for external-volume tests, never touching `data/uniphoto.db` or `~/.Trash`).
 - Verifies:
   1. `scan_directory`: EXIF Orientation swap (`5..8`), pure-DCT `pHash` exact duplicate detection electing largest `file_size`, and all quality/aesthetic columns `None`.
@@ -158,8 +159,9 @@ SQLite runs with `PRAGMA journal_mode=WAL`, `PRAGMA synchronous=NORMAL`, and `PR
   6. `request_cancel`: verifies cooperative early stop during `scan_directory` (`cancelled=True`, `phase=="cancelled"`, partial items committed) and non-destructive cancel during `cluster_unassigned_photos` (existing clusters preserved).
   7. Server-side pagination totals (`limit` / `offset`): confirms `total_groups` / `total_clusters`, `total_bytes`, and `total_photos` reflect the full dataset across pages while `items` slices accurately.
   8. Mount-aware external volume protection (`UNIPHOTO_VOLUMES_ROOT` + `UNIPHOTO_UNMOUNTED_VOLUMES`): simulates unplugging `/Volumes/ExtDrive`, verifies `disconnected_volumes == ["ExtDrive"]`, `items == []`, and 100% survival of SQLite `Photo` / `Cluster` / `aesthetic_score` rows, then reconnects `ExtDrive` and confirms all groups and scores reappear immediately without rescanning.
-  9. Packaged runtime configuration (`test_09_packaged_env_data_dir_dynamic_port_and_health`): verifies `/api/v1/health` returns `200` with `{"status": "ok", ...}`, dynamic `settings.PORT` updates `_serialize_photo` `thumbnail_url` cleanly, `config.Settings` resolves `UNIPHOTO_DATA_DIR` and `UNIPHOTO_PACKAGED=1` (`~/Library/Application Support/com.hung.uniphoto`) without touching `data/uniphoto.db`, and offline `UNIPHOTO_MODELS_DIR` model lookup resolves `face_landmarker.task` and `mobilenet_v2.onnx` (`OnnxMobileNetV2Extractor`, plus dev `.pth` fallback).
+  9. Packaged runtime configuration (`test_09_packaged_env_data_dir_dynamic_port_and_health`): verifies `/api/v1/health` returns `200` with `{"status": "ok", ...}`, dynamic `settings.PORT` updates `_serialize_photo` `thumbnail_url` cleanly, `config.Settings` resolves `UNIPHOTO_DATA_DIR` and `UNIPHOTO_PACKAGED=1` (`~/Library/Application Support/com.hung.uniphoto`) without touching `data/uniphoto.db`, and offline `UNIPHOTO_MODELS_DIR` lookup resolves `face_landmarker.task` and `mobilenet_v2.onnx` (`OnnxMobileNetV2Extractor`, plus dev `.pth` fallback).
   10. Slim ONNX & pure-DCT mathematical equivalence (`test_10_slim_onnx_and_dct_phash_exact_equivalence`): verifies `scanner.calculate_phash(img)` matches `str(imagehash.phash(img, hash_size=16))` bit-for-bit across `24` diverse synthetic & demo images (`RGB`, `RGBA`, `L`, landscape, portrait, odd aspect ratios) with zero `imagehash`/`scipy` in `scanner.py`, and verifies `OnnxMobileNetV2Extractor` (`cv2.dnn`) matches PyTorch `MobileNet_V2_Weights.DEFAULT` embeddings with cosine similarity `>= 0.99999` (both `batch=1` and `batch=14`) and produces 100% identical AI clusters and `best_photo_id` winners across the full demo dataset.
+  11. Windows cross-platform support (`test_11_windows_cross_platform_support`): verifies `resolve_data_dir()` on `win32` (`LOCALAPPDATA`) when `UNIPHOTO_PACKAGED=1`, Windows removable drive-letter protection (`E:\Photos\IMG_001.jpg` with `UNIPHOTO_UNMOUNTED_VOLUMES="E:"`), Unicode/Vietnamese folder & filename decoding across `ai_engine`, `quality_scorer`, and `aesthetic_scorer`, and non-empty `folder_name` serialization on Windows root paths (`D:\IMG_001.jpg`).
 
 ## REST API Endpoints Summary
 
