@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-i18n="meta.title">UniPhoto — Dọn sạch ảnh trùng trên Mac</title>
+  <meta name="description" data-i18n-content="meta.description" content="Ứng dụng macOS miễn phí giúp lọc ảnh trùng, gom loạt chụp liên tiếp và chọn tấm sắc nét nhất. 100% Offline." />
+  <meta name="theme-color" content="#0A0A0D" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" data-i18n-content="meta.title" content="UniPhoto — Dọn sạch ảnh trùng trên Mac" />
+  <meta property="og:description" data-i18n-content="meta.description" content="Ứng dụng macOS miễn phí giúp lọc ảnh trùng, gom loạt chụp liên tiếp và chọn tấm sắc nét nhất. 100% Offline." />
+  <meta property="og:image" content="assets/icon.png" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:image" content="assets/icon.png" />
+  <link rel="icon" type="image/png" href="assets/icon.png" />
+  <link rel="apple-touch-icon" href="assets/icon.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="ambient-grid" aria-hidden="true"></div>
+
+  <header class="site-nav">
+    <div class="container nav-inner">
+      <a href="#top" class="brand" aria-label="UniPhoto">
+        <img src="assets/icon.png" alt="UniPhoto" width="28" height="28" class="brand-icon" />
+        <span>UniPhoto</span>
+      </a>
+
+      <div class="nav-actions">
+        <div class="lang-switch" role="group" aria-label="Language">
+          <button type="button" class="lang-btn is-active" data-lang-btn="vi" aria-pressed="true">VI</button>
+          <button type="button" class="lang-btn" data-lang-btn="en" aria-pressed="false">EN</button>
+        </div>
+
+        <a href="https://github.com/hungtun/UniPhoto" data-github-link target="_blank" rel="noopener noreferrer" class="icon-link" aria-label="GitHub" title="GitHub">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.09 3.29 9.4 7.86 10.92.58.1.79-.25.79-.56v-2.02c-3.2.7-3.87-1.39-3.87-1.39-.52-1.33-1.28-1.68-1.28-1.68-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11.05 11.05 0 0 1 5.79 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.12 3.05.74.81 1.18 1.83 1.18 3.09 0 4.41-2.69 5.38-5.26 5.67.42.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z"/>
+          </svg>
+        </a>
+
+        <a href="https://github.com/hungtun/UniPhoto/releases/latest/download/UniPhoto_0.1.0_aarch64.dmg" data-download-dmg class="btn btn-primary btn-sm">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.96 6.3c.67-.81 1.12-1.94 1-3.05-.96.04-2.13.64-2.82 1.45-.61.7-.115 1.85-1.01 2.94 1.07.08 2.16-.53 2.83-1.34Z"/>
+          </svg>
+          <span data-i18n="nav.download">Tải về</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="container">
+        <div class="hero-app-icon-wrap">
+          <img src="assets/icon.png" alt="UniPhoto" width="72" height="72" class="hero-app-icon" />
+        </div>
+
+        <h1 class="hero-title" data-i18n="hero.title">Dọn sạch ảnh trùng trên Mac.</h1>
+        <p class="hero-subtitle" data-i18n="hero.subtitle">Lọc ảnh trùng, gom loạt chụp liên tiếp và chọn tấm sắc nét nhất.</p>
+
+        <div class="hero-actions">
+          <a href="https://github.com/hungtun/UniPhoto/releases/latest/download/UniPhoto_0.1.0_aarch64.dmg" data-download-dmg class="btn btn-primary btn-lg">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.96 6.3c.67-.81 1.12-1.94 1-3.05-.96.04-2.13.64-2.82 1.45-.61.7-.115 1.85-1.01 2.94 1.07.08 2.16-.53 2.83-1.34Z"/>
+            </svg>
+            <span data-i18n="hero.ctaDmg">Tải cho macOS</span>
+          </a>
+        </div>
+
+        <p class="hero-meta">
+          <span data-release-version>v0.1.0</span>
+          <span class="meta-dot" aria-hidden="true">•</span>
+          <a href="https://github.com/hungtun/UniPhoto/releases/latest/download/UniPhoto_0.1.0_aarch64.zip" data-download-zip class="hero-meta-link" data-i18n="hero.zipLink">Bản .zip</a>
+          <span class="meta-dot" aria-hidden="true">•</span>
+          <span>macOS 12+ (M1–M4)</span>
+          <span class="meta-dot" aria-hidden="true">•</span>
+          <span data-i18n="hero.reqFree">Miễn phí &amp; 100% Offline</span>
+        </p>
+      </div>
+    </section>
+
+    <section id="preview" class="showcase-section">
+      <div class="container">
+        <div class="mac-window" id="mockupWindow" role="region" aria-label="UniPhoto Preview">
+          <aside class="mac-sidebar">
+            <div class="mac-sidebar-top">
+              <div class="traffic-lights" aria-hidden="true">
+                <span class="tl-dot tl-close"></span><span class="tl-dot tl-min"></span><span class="tl-dot tl-max"></span>
+              </div>
+              <button type="button" class="mac-icon-btn" id="mockupSidebarToggle" aria-label="Toggle Sidebar">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><line x1="9" y1="4" x2="9" y2="20"/></svg>
+              </button>
+            </div>
+
+            <div class="mac-sidebar-body">
+              <div>
+                <div class="mac-sec-label" data-i18n="mockup.secLibrary">Danh mục</div>
+                <div class="mac-nav-list">
+                  <button type="button" class="mac-nav-item is-active" data-mockup-tab="duplicates">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M4 16V6a2 2 0 0 1 2-2h10"/></svg>
+                    <span class="mac-nav-label" data-i18n="mockup.navDuplicates">Ảnh trùng lặp</span>
+                    <span class="mac-nav-count">48,6 MB</span>
+                  </button>
+                  <button type="button" class="mac-nav-item" data-mockup-tab="similars">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9L12 3z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9L19 15z"/></svg>
+                    <span class="mac-nav-label" data-i18n="mockup.navSimilars">Ảnh tương tự</span>
+                    <span class="mac-nav-count">64,2 MB</span>
+                  </button>
+                  <button type="button" class="mac-nav-item" data-mockup-tab="selected">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.3l2.4 2.4 4.8-5"/></svg>
+                    <span class="mac-nav-label" data-i18n="mockup.navSelected">Đã chọn</span>
+                    <span class="mac-nav-count" id="mockupSelectedNavCount">8 ảnh</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="mac-storage-box">
+                <div class="mac-sec-label" data-i18n="mockup.secStorage">Lưu trữ</div>
+                <div class="mac-folder-row">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+                  <span>DuLich_VietNam_2026</span>
+                </div>
+                <div class="mac-storage-bytes"><span id="mockupSelectedBytesLabel">50,9 MB</span><span>112,8 MB</span></div>
+                <div class="mac-storage-track" aria-hidden="true"><div class="mac-storage-fill" id="mockupStorageFill"></div></div>
+              </div>
+            </div>
+
+            <div class="mac-sidebar-footer">
+              <img src="assets/icon.png" alt="" width="16" height="16" class="mac-mini-logo" />
+              <span class="mac-ready-dot" aria-hidden="true"></span>
+              <span data-i18n="mockup.statusReady">UniPhoto • Sẵn sàng</span>
+            </div>
+          </aside>
+
+          <div class="mac-master">
+            <div class="mac-master-header">
+              <div class="mac-collapsed-controls">
+                <div class="traffic-lights" aria-hidden="true">
+                  <span class="tl-dot tl-close"></span><span class="tl-dot tl-min"></span><span class="tl-dot tl-max"></span>
+                </div>
+                <button type="button" class="mac-icon-btn" id="mockupSidebarExpand" aria-label="Expand Sidebar">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><line x1="9" y1="4" x2="9" y2="20"/></svg>
+                </button>
+              </div>
+              <div class="mac-master-titles">
+                <div class="mac-master-title" id="mockupMasterTitle">Ảnh trùng lặp</div>
+                <div class="mac-master-sub" id="mockupMasterSubtitle">3 nhóm • 48,6 MB</div>
+              </div>
+            </div>
+
+            <div class="mac-search-row">
+              <div class="mac-search-capsule">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.2" y2="16.2"/></svg>
+                <span data-i18n="mockup.searchPlaceholder">Tìm kiếm</span>
+                <kbd>⌘F</kbd>
+              </div>
+              <button type="button" class="mac-circle-btn" id="mockupAutoSelectBtn" aria-label="Auto Select">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4V2m0 14v-2M8 9h2m10 0h2m-4.2-3.8L19 4m-8.2 8.2L3 20m14.8-5.2L19 16m-6.8-9.8L11 5"/></svg>
+              </button>
+            </div>
+
+            <div class="mac-group-list" id="mockupGroupList"></div>
+          </div>
+
+          <div class="mac-detail">
+            <div class="mac-detail-toolbar">
+              <div class="mac-toolbar-left">
+                <div class="mac-segmented" role="group" aria-label="View Mode">
+                  <button type="button" class="mac-seg-btn is-active" data-mockup-view="single"><span data-i18n="mockup.viewSingle">Xem lớn</span></button>
+                  <button type="button" class="mac-seg-btn" data-mockup-view="compare"><span data-i18n="mockup.viewCompare">So sánh</span></button>
+                </div>
+                <button type="button" class="mac-ai-pill" id="mockupAiScoreBtn" hidden>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9L12 3z"/></svg>
+                  <span data-i18n="mockup.btnAiScored">Điểm AI</span>
+                </button>
+              </div>
+
+              <div class="mac-toolbar-right">
+                <span class="mac-tool-pill">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <span>Preview</span>
+                </span>
+                <span class="mac-tool-pill">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+                  <span>Finder</span>
+                </span>
+              </div>
+            </div>
+
+            <div class="mac-photo-meta" id="mockupPhotoMeta"></div>
+            <div class="mac-stage" id="mockupStage"></div>
+
+            <div class="mac-toast" id="mockupToast" hidden role="status" aria-live="polite">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#30D158" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.3l2.4 2.4 4.8-5"/></svg>
+              <span id="mockupToastText"></span>
+            </div>
+
+            <div class="mac-detail-footer">
+              <div class="mac-footer-summary" id="mockupFooterSummary"></div>
+              <button type="button" class="mac-trash-btn" id="mockupTrashBtn">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                <span id="mockupTrashBtnLabel">Chuyển vào Thùng rác</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="features-section reveal">
+      <div class="container">
+        <div class="feature-grid">
+          <article class="feature-card">
+            <div class="feature-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><line x1="9" y1="4" x2="9" y2="20"/></svg>
+            </div>
+            <h2 class="feature-title" data-i18n="features.c1Title">Giao diện macOS gốc</h2>
+            <p class="feature-desc" data-i18n="features.c1Desc">Ba cột trực quan, phím tắt nhanh và kéo-thả thư mục.</p>
+          </article>
+
+          <article class="feature-card">
+            <div class="feature-icon is-green" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M4 16V6a2 2 0 0 1 2-2h10"/><path d="M11.5 14.2l1.8 1.8 3.5-3.8"/></svg>
+            </div>
+            <h2 class="feature-title" data-i18n="features.c2Title">Lọc trùng tức thì</h2>
+            <p class="feature-desc" data-i18n="features.c2Desc">Tự động giữ lại file gốc có dung lượng lớn nhất.</p>
+          </article>
+
+          <article class="feature-card">
+            <div class="feature-icon is-indigo" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9L12 3z"/><circle cx="18" cy="18" r="3"/></svg>
+            </div>
+            <h2 class="feature-title" data-i18n="features.c3Title">AI chọn ảnh đẹp</h2>
+            <p class="feature-desc" data-i18n="features.c3Desc">Phát hiện mắt nhắm, mặt mờ và góc máy bị nghiêng.</p>
+          </article>
+
+          <article class="feature-card">
+            <div class="feature-icon is-amber" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+            </div>
+            <h2 class="feature-title" data-i18n="features.c4Title">An toàn &amp; Offline</h2>
+            <p class="feature-desc" data-i18n="features.c4Desc">Chuyển vào Thùng rác macOS, không tải ảnh lên mạng.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="install" class="install-section reveal">
+      <div class="container">
+        <div class="install-card">
+          <div class="install-head">
+            <h2 class="install-title" data-i18n="install.title">Mở lần đầu trên macOS</h2>
+            <p class="install-desc" data-i18n="install.desc">Kéo UniPhoto vào Applications. Nếu macOS hỏi xác minh lần đầu, chạy lệnh sau trong Terminal:</p>
+          </div>
+          <div class="terminal-bar">
+            <div class="terminal-code">
+              <span class="terminal-prompt" aria-hidden="true">$</span>
+              <code id="xattrCmdText">xattr -cr /Applications/UniPhoto.app</code>
+            </div>
+            <button type="button" class="copy-btn" id="copyXattrBtn">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              <span id="copyXattrLabel" data-i18n="install.btnCopy">Sao chép</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-line">
+      <span class="footer-brand-name">UniPhoto</span>
+      <span class="meta-dot" aria-hidden="true">•</span>
+      <span data-release-version>v0.1.0</span>
+      <span class="meta-dot" aria-hidden="true">•</span>
+      <span data-i18n="footer.note">Miễn phí cho macOS</span>
+      <span class="meta-dot" aria-hidden="true">•</span>
+      <a href="https://github.com/hungtun/UniPhoto" data-github-link target="_blank" rel="noopener noreferrer" class="footer-link">GitHub</a>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

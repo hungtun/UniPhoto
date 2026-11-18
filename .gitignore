@@ -9,6 +9,7 @@ __pycache__/
 # Distribution / packaging
 .Python
 build/
+/build/
 develop-eggs/
 dist/
 downloads/
@@ -50,5 +51,13 @@ venv.bak/
 .coverage
 htmlcov/
 
-# Logs
+# Logs, Local Cache & SQLite DB files
 *.log
+.cache/
+.DS_Store
+*.db
+*.db-shm
+*.db-wal
+*.sqlite3
+*.task
+*.pth
