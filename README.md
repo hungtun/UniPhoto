@@ -26,9 +26,11 @@ UniPhoto is a local-first **macOS & Windows 10/11** desktop application that hel
   - **macOS:** Native Overlay Titlebar (`titleBarStyle: "Overlay"`, `trafficLightPosition: { x: 18, y: 22 }`, `pl-[76px]`+ traffic-light safe zones) paired with `NSVisualEffectView` Sidebar Vibrancy (`Effect::Sidebar`), `Preview` & `Finder` integration, and `⌘` shortcuts.
   - **Windows 10/11:** Native standard dark window frame (`tauri.windows.bundle.json` `transparent: false` + `Effect::Mica`), hidden sidecar console (`CREATE_NO_WINDOW`), Unicode/Vietnamese path-safe OpenCV decoding (`np.fromfile` + `cv2.imdecode`), Windows default Photo Viewer & `explorer /select` integration, and `Ctrl` shortcuts.
   - Authentic **3-pane split layout** on `ResultsPage`: collapsible sidebar (`#007AFF` active source-list items, `#FFD60A` storage bar), `#1E1E20` master group list (`⌘F` / `Ctrl+F` capsule search, circular action buttons), and `#161618` / `#141416` darkroom detail stage (`Large View` / `Compare Grid`), plus Tauri v2 **Folder Drag & Drop** on `HomePage` and instant `VI` ⇄ `EN` internationalization.
-- **Slim Standalone Offline Packaging for macOS (`.app` / `.dmg`) & Windows (`.exe` / `.msi`):**
-  - **macOS (`bash scripts/build_macos_app.sh`):** Builds a slim PyInstaller `--onedir` sidecar (`~268 MB`, excluding `torch`/`scipy`/`matplotlib`/`sklearn`/`imagehash`), syncs `backend/` and offline `mobilenet_v2.onnx` (`8.4 MB`) + `face_landmarker.task` (`3.6 MB`) into `UniPhoto.app` (`~288 MB`) with symlink-preserving `rsync -a --delete` and `strip -x`, verifies ad-hoc deep `codesign` + `--self-test`, and creates a compressed `UDZO` `.dmg` (`~100 MB`).
-  - **Windows 10/11 (`scripts/build_windows_app.ps1` + `.github/workflows/build-windows.yml`):** Builds `uniphoto-backend.exe` + offline ONNX/MediaPipe models into standalone NSIS `UniPhoto_*_x64-setup.exe` (`~98 MB`) and `.msi` installers locally or automatically on GitHub Actions (`windows-latest`) whenever a `v*` tag is pushed, storing runtime data in `%LOCALAPPDATA%\UniPhoto\uniphoto.db` with Win32 `SYNCHRONIZE` parent-process watchdog cleanup.
+  - **Interactive 4-Step User Guide (`TutorialModal.tsx`):** Auto-shown on first launch (`uniphoto_tutorial_seen_v1`) with **Previous**, **Next / Get Started**, and **Skip** controls (`←/→`, `Enter`, `Esc`), bespoke native UI mini-previews, inline `VI` ⇄ `EN` switching, and 1-click replay anytime via the **Hướng dẫn / Guide** (`?`) button on both the Home screen and Results toolbar.
+- **Slim Standalone Offline Packaging, In-App Updater & Dual-OS Auto-Release (`macOS` & `Windows`):**
+  - **macOS (`bash scripts/build_macos_app.sh`):** Reads the release version dynamically from `tauri.conf.json`, builds a slim PyInstaller `--onedir` sidecar (`~268 MB`, excluding `torch`/`scipy`/`matplotlib`/`sklearn`/`imagehash`), syncs `backend/` and offline `mobilenet_v2.onnx` (`8.4 MB`) + `face_landmarker.task` (`3.6 MB`) into `UniPhoto.app` (`~288 MB`) with symlink-preserving `rsync -a --delete` and `strip -x`, verifies ad-hoc deep `codesign` + `--self-test`, and packages both a compressed `UDZO` `.dmg` (`~100 MB`) and a symlink/signature-preserving `ditto` `.zip` archive (`UniPhoto_<version>_aarch64.zip`).
+  - **Windows 10/11 (`scripts/build_windows_app.ps1`):** Builds `uniphoto-backend.exe` + offline ONNX/MediaPipe models into standalone NSIS `UniPhoto_<version>_x64-setup.exe` (`~98 MB`) and `.msi` installers, storing runtime data in `%LOCALAPPDATA%\UniPhoto\uniphoto.db` with Win32 `SYNCHRONIZE` parent-process watchdog cleanup.
+  - **Level 1 In-App Updater & 1-Command Release Automation:** `frontend/src/utils/updater.ts` and `UpdateModal.tsx` check GitHub Releases (`releases/latest`, 15-min cache, offline/404-safe, plus manual check on `HomePage` & `ResultsPage`) and open the matching `.dmg`/`.zip` or `.exe`/`.msi` installer while preserving 100% of user scan history. `scripts/bump_version.py` atomically syncs all 6 version-bearing files, and pushing a `v*` tag triggers parallel `macos-14` + `windows-latest` builds in `.github/workflows/build-windows.yml`.
 
 ---
 
@@ -37,18 +39,18 @@ UniPhoto is a local-first **macOS & Windows 10/11** desktop application that hel
 | Layer | Technology |
 | :--- | :--- |
 | **Desktop Shell** | Tauri v2 (`@tauri-apps/api`, `@tauri-apps/plugin-dialog`, `@tauri-apps/plugin-opener`), macOS Overlay Titlebar & `Effect::Sidebar` vibrancy, Windows 11 `Effect::Mica` & `CREATE_NO_WINDOW` sidecar spawn, dynamic port manager (`src-tauri/src/lib.rs`) |
-| **Frontend UI** | React 19, TypeScript, Vite 8, Tailwind CSS v4, Native Split-View UI (`App.css`), SF-style SVG icons (`MacIcons.tsx`), OS-aware `VI`/`EN` i18n |
+| **Frontend UI** | React 19, TypeScript, Vite 8, Tailwind CSS v4, Native Split-View UI (`App.css`), SF-style SVG icons (`MacIcons.tsx`), `GlassModal` / `UpdateModal` / `TutorialModal`, OS-aware `VI`/`EN` i18n |
 | **Backend API** | Python 3, FastAPI, Uvicorn, Pydantic v2 (`pydantic-settings`), dynamic `HOST`/`PORT` & `/api/v1/health` |
 | **Database** | SQLite 3 (`data/uniphoto.db` in dev; `~/Library/Application Support/com.hung.uniphoto/uniphoto.db` on macOS; `%LOCALAPPDATA%\UniPhoto\uniphoto.db` on Windows) via SQLAlchemy 2.0 (`PRAGMA journal_mode=WAL`, automatic schema migration) |
 | **Image & Hashing** | Pillow (`PIL`), `pillow-heif` (`.heic`/`.heif`), pure NumPy + Pillow 2D DCT-II `pHash` 16×16 (bit-for-bit `ImageHash` equivalent), Unicode-safe `np.fromfile` + `cv2.imdecode` |
 | **AI & Computer Vision** | OpenCV DNN (`cv2.dnn` running `float32` `mobilenet_v2.onnx` with optional dev-only PyTorch fallback), NumPy `O(B·N)` chunked L2 cosine similarity, `MediaPipe` Tasks (`FaceLandmarker`), OpenCV (`HoughLinesP` camera tilt, Laplacian/Sobel sharpness, offline face/eye fallback) |
-| **Packaging & CI** | Slim PyInstaller `--onedir` (`uniphoto_backend.spec`), macOS `.app` / `.dmg` (`scripts/build_macos_app.sh`), Windows NSIS `.exe` / `.msi` (`scripts/build_windows_app.ps1`, `tauri.windows.bundle.json`, `.github/workflows/build-windows.yml`) |
+| **Packaging, Updater & CI** | Slim PyInstaller `--onedir` (`uniphoto_backend.spec`), macOS `.app` / `.dmg` / `.zip` (`scripts/build_macos_app.sh`), Windows NSIS `.exe` / `.msi` (`scripts/build_windows_app.ps1`), In-App GitHub Release Updater (`updater.ts`), 1-command version sync (`scripts/bump_version.py`), dual-OS GitHub Actions (`.github/workflows/build-windows.yml`) |
 
 ---
 
 ## ⌨️ Keyboard Shortcuts (`ResultsPage`)
 
-Click the Keyboard Shortcuts icon button in the top toolbar of the Results screen to view all shortcuts at any time (`⌘F` / `Ctrl+F` works anywhere unless a confirmation modal is open; single-key shortcuts pause automatically while typing in search inputs):
+Click the Keyboard Shortcuts icon button in the top toolbar of the Results screen to view all shortcuts at any time (`⌘F` / `Ctrl+F` works anywhere unless a confirmation, update, or tutorial modal is open; single-key shortcuts pause automatically while typing in search inputs):
 
 | Shortcut | Action |
 | :--- | :--- |
@@ -69,7 +71,7 @@ Click the Keyboard Shortcuts icon button in the top toolbar of the Results scree
 ```text
 UniPhoto/
 ├── .github/workflows/
-│   └── build-windows.yml               # GitHub Actions CI: builds Windows .exe & .msi and attaches to v* Releases
+│   └── build-windows.yml               # Dual-OS GitHub Actions CI: builds macOS (.dmg/.zip) & Windows (.exe/.msi) on v* tags
 ├── app/                                # FastAPI Python backend
 │   ├── main.py                         # FastAPI app, CORS, lifespan SQLite WAL init, /api/v1/health & aliases
 │   ├── core/
@@ -88,16 +90,17 @@ UniPhoto/
 │   └── api/v1/                         # /api/v1 router & endpoints (scan, cluster, photos)
 ├── frontend/                           # Tauri v2 + React 19 + Tailwind CSS v4 desktop client
 │   ├── src/
-│   │   ├── App.tsx                     # Root state, native readiness boot screen, scan/score orchestration & drag-drop
+│   │   ├── App.tsx                     # Root state, readiness boot, first-launch tutorial, scan/score, drag-drop & update check
 │   │   ├── App.css                     # Native SF Pro / Segoe UI typography, macOS vibrancy & Windows dark surfaces
 │   │   ├── api/PhotoApi.ts             # Dynamic-port REST client (invoke("get_backend_url") + /health check)
-│   │   ├── components/                 # MacIcons (21 SF-style SVGs), CustomCheckbox, LanguageSwitcher, GlassModal, GlassToast
+│   │   ├── components/                 # MacIcons, CustomCheckbox, LanguageSwitcher, GlassModal, UpdateModal, TutorialModal, GlassToast
 │   │   ├── i18n/                       # Bilingual VI/EN dictionary & I18nContext
 │   │   ├── pages/                      # HomePage, ScanningPage, ResultsPage (3-pane split-view)
-│   │   └── utils/photoHelpers.ts       # Grouping, score gating & best-photo reason helpers
+│   │   └── utils/                      # photoHelpers.ts & updater.ts (GitHub Releases semver check & OS asset selector)
 │   └── src-tauri/                      # macOS Overlay + Windows bundle config (src/lib.rs, tauri.conf.json, tauri.windows.bundle.json)
 ├── scripts/
-│   ├── build_macos_app.sh              # 1-command slim offline macOS .app (~288 MB) & .dmg (~100 MB) builder
+│   ├── bump_version.py                 # 1-command atomic version sync & --check across all 6 version-bearing files
+│   ├── build_macos_app.sh              # 1-command slim offline macOS .app (~288 MB), .dmg (~100 MB) & .zip builder
 │   ├── build_windows_app.ps1           # 1-command slim offline Windows 10/11 NSIS .exe (~98 MB) & .msi builder
 │   ├── export_mobilenet_v2_onnx.py     # Offline float32 Conv+BN-folded ONNX exporter & cv2.dnn validator
 │   └── pyi_rth_stub_unused.py          # PyInstaller runtime hook stubbing unused matplotlib imports in MediaPipe
@@ -106,7 +109,7 @@ UniPhoto/
 │   ├── uniphoto.db                     # Dev SQLite WAL database
 │   └── models/                         # mobilenet_v2.onnx (8.4 MB) & face_landmarker.task (3.6 MB)
 ├── tests/
-│   └── test_uniphoto_pipeline.py       # Isolated 11-test stdlib unittest suite (:memory: SQLite + ONNX/DCT + win32 cross-platform)
+│   └── test_uniphoto_pipeline.py       # Isolated 12-test stdlib unittest suite (:memory: SQLite + ONNX/DCT + win32 + release sync)
 ├── .agents/skills/uniphoto/
 │   └── scripts/                        # create_demo_dataset.py & verify.sh
 ├── uniphoto_backend.spec               # Slim cross-platform PyInstaller --onedir spec (excludes torch/scipy/matplotlib)
@@ -200,9 +203,9 @@ npm --prefix frontend run tauri dev
 
 ---
 
-## 📦 Building Slim Standalone macOS `.app` (`~288 MB`) & `.dmg` (`~100 MB`)
+## 📦 Building Slim Standalone macOS `.app` (`~288 MB`), `.dmg` (`~100 MB`) & `.zip`
 
-Package UniPhoto into a self-contained, 100% offline-capable `UniPhoto.app` (`~288 MB`, down `~80%` from `~1.48 GB`) and compressed `UniPhoto_*.dmg` (`~100 MB`) installer—no Python, PyTorch, or Homebrew required on the recipient's Mac:
+Package UniPhoto into a self-contained, 100% offline-capable `UniPhoto.app` (`~288 MB`, down `~80%` from `~1.48 GB`), compressed `UniPhoto_<version>_<arch>.dmg` (`~100 MB`), and `UniPhoto_<version>_<arch>.zip` archive—no Python, PyTorch, or Homebrew required on the recipient's Mac:
 
 ```bash
 bash scripts/build_macos_app.sh
@@ -213,7 +216,7 @@ bash scripts/build_macos_app.sh
 2. **Pre-Bundles Offline AI Weights (`build/bundled-models/`):** Stages `face_landmarker.task` (`3.6 MB`) and unquantized `float32` `mobilenet_v2.onnx` (`8.4 MB`, exported and validated against PyTorch via `scripts/export_mobilenet_v2_onnx.py` if absent) so AI clustering and portrait/eye scoring run 100% offline.
 3. **Compiles Slim Backend Sidecar (`build/pyinstaller/uniphoto-backend/`, `~268 MB`):** Packages `run.py` + FastAPI + SQLAlchemy + Pillow/HEIF + OpenCV DNN + MediaPipe via PyInstaller `--onedir` (`uniphoto_backend.spec`), excluding `torch`/`torchvision`/`scipy`/`imagehash`/`pywt`/`sklearn`/`matplotlib`, stubbing unused `matplotlib` imports via `scripts/pyi_rth_stub_unused.py`, deduplicating identical `.dylib` files via relative symlinks, stripping Mach-O debug symbols (`strip -x`), and verifying `--self-test` + `GET /api/v1/health`.
 4. **Builds Tauri `.app` Shell & Syncs Resources Preserving Symlinks:** Runs `npm --prefix frontend run tauri build -- --bundles app` (keeping `tauri.conf.json` and `tauri.bundle.json` clean so Tauri never dereferences `.dylib` symlinks into duplicate copies) and syncs `backend/` and `models/` into `UniPhoto.app/Contents/Resources/` via `rsync -a --delete`.
-5. **Ad-Hoc Deep Signing, In-Bundle `--self-test` & Compressed `.dmg`:** Applies ad-hoc `codesign --force --deep --sign -` + `codesign --verify --deep --strict` on `UniPhoto.app` (`~288 MB`), runs `Contents/Resources/backend/uniphoto-backend --self-test` (`~0.66s`), and creates `UniPhoto_0.1.0_<arch>.dmg` via `hdiutil create -format UDZO -imagekey zlib-level=9` (`~100 MB`).
+5. **Ad-Hoc Deep Signing, In-Bundle `--self-test`, `.dmg` & `.zip`:** Reads `APP_VERSION` dynamically from `frontend/src-tauri/tauri.conf.json`, applies ad-hoc `codesign --force --deep --sign -` + `codesign --verify --deep --strict` on `UniPhoto.app` (`~288 MB`), runs `Contents/Resources/backend/uniphoto-backend --self-test` (`~0.66s`), creates `UniPhoto_<version>_<arch>.zip` via `ditto -c -k --sequesterRsrc --keepParent` (preserving symlinks & Mach-O signatures), and creates `UniPhoto_<version>_<arch>.dmg` via `hdiutil create -format UDZO -imagekey zlib-level=9` (`~100 MB`).
 
 ### Packaged Runtime Lifecycle (`frontend/src-tauri/src/lib.rs`)
 - **Automatic Free Port Selection (`get_backend_url`):** Prefers `127.0.0.1:8000` and seamlessly falls back to an OS-assigned free ephemeral port if `8000` is busy; React resolves the dynamic base URL via `invoke("get_backend_url")` (`PhotoApi.ts`) and displays a native macOS readiness screen while the sidecar initializes.
@@ -228,7 +231,7 @@ xattr -cr /Applications/UniPhoto.app
 
 ---
 
-## 🪟 Building Slim Standalone Windows 10/11 Installer (`.exe` / `.msi`) & GitHub Actions CI
+## 🪟 Windows 10/11 Build & 1-Command Dual-OS Auto-Release (`macOS` + `Windows`)
 
 ### Option A — Local Build on Windows 10/11 (PowerShell)
 ```powershell
@@ -236,8 +239,18 @@ pwsh -File scripts/build_windows_app.ps1
 ```
 `scripts/build_windows_app.ps1` verifies `.venv\Scripts\python.exe`, installs only slim runtime dependencies (`fastapi`, `uvicorn`, `SQLAlchemy`, `pillow`, `pillow_heif`, `numpy`, `opencv-python`, `mediapipe`, `pyinstaller`—no `torch` needed), stages offline `mobilenet_v2.onnx` (`8.4 MB`) + `face_landmarker.task` (`3.6 MB`), compiles `build\pyinstaller\uniphoto-backend\uniphoto-backend.exe` via `uniphoto_backend.spec`, verifies `--self-test` + `/api/v1/health`, and builds standalone NSIS `UniPhoto_0.1.0_x64-setup.exe` (`~98 MB`) and WiX `.msi` installers via `npm --prefix frontend run tauri build -- --bundles nsis,msi --config src-tauri/tauri.windows.bundle.json` (spawning the sidecar with `CREATE_NO_WINDOW`, storing SQLite data in `%LOCALAPPDATA%\UniPhoto\uniphoto.db`, and monitoring parent GUI liveness via Win32 `OpenProcess(SYNCHRONIZE)` + `WaitForSingleObject`).
 
-### Option B — Automatic GitHub Actions Release Builder (`.github/workflows/build-windows.yml`)
-- Pushing a `v*` tag (e.g., `git tag v0.1.0 && git push origin v0.1.0`) or triggering **Actions → `build-windows` → Run workflow** (`workflow_dispatch`) compiles the Windows `.exe` and `.msi` installers automatically on `windows-latest`, uploads workflow artifacts, and (on `v*` tags) attaches `*.exe` and `*.msi` directly to the matching GitHub Release via `softprops/action-gh-release@v2`—where `website/script.js` automatically links them on `[data-download-win]`.
+### Option B — 1-Command Version Bump & Dual-OS GitHub Actions Release (`scripts/bump_version.py` + `.github/workflows/build-windows.yml`)
+1. **Check or bump all 6 version-bearing files atomically** (`app/core/config.py`, `frontend/package.json`, `frontend/src-tauri/Cargo.toml`, `frontend/src-tauri/tauri.conf.json`, `frontend/src/utils/updater.ts`, and `website/script.js`):
+   ```bash
+   .venv/bin/python scripts/bump_version.py --check
+   .venv/bin/python scripts/bump_version.py 0.2.0
+   ```
+2. **Commit & push a `v*` tag** (or trigger `workflow_dispatch` in GitHub Actions):
+   ```bash
+   git add -A && git commit -m "chore: release v0.2.0"
+   git tag v0.2.0 && git push origin main v0.2.0
+   ```
+   `.github/workflows/build-windows.yml` runs **`build-macos` (`macos-14` Apple Silicon `.dmg` & `.zip`)** and **`build-windows` (`windows-latest` x64 `.exe` & `.msi`)** in parallel and attaches all 4 installers directly to the GitHub Release via `softprops/action-gh-release@v2`—where both the **Level 1 In-App Updater** (`frontend/src/utils/updater.ts` + `UpdateModal.tsx`) and `website/script.js` automatically discover the new version and select the right OS installer.
 
 ---
 
@@ -250,14 +263,14 @@ Create a self-contained test library under `/tmp/uniphoto-demo` containing exact
 ```
 You can then **drag & drop** `/tmp/uniphoto-demo` directly onto the UniPhoto home dropzone panel or select it via the folder picker.
 
-### Run the Isolated Unit Test Suite (`11/11` Tests)
-`tests/test_uniphoto_pipeline.py` uses Python's `unittest` with an isolated in-memory SQLite database (`sqlite:///:memory:`), temporary image directories, and `UNIPHOTO_TRASH_DIR` / `UNIPHOTO_VOLUMES_ROOT` / `UNIPHOTO_UNMOUNTED_VOLUMES` (never touching `data/uniphoto.db` or system Trash) to test EXIF orientation & pure-DCT `pHash` scanning, `O(B·N)` chunked cosine similarity equivalence (`1,200 × 1280-d`), on-demand aesthetic/tilt/portrait scoring, collision-safe Trash moves, cooperative cancellation (`request_cancel`), server-side pagination totals (`limit`/`offset`), mount-aware external volume protection, packaged runtime configuration (`/api/v1/health`, dynamic `settings.PORT` thumbnail URLs, `UNIPHOTO_DATA_DIR` / `UNIPHOTO_PACKAGED=1`, and offline `UNIPHOTO_MODELS_DIR` lookup), mathematical slim-runtime equivalence (`calculate_phash` bit-for-bit equality against `imagehash.phash` + ONNX `cv2.dnn` vs PyTorch `MobileNetV2` cosine similarity `>= 0.99999`), and Windows (`win32`) cross-platform support (`%LOCALAPPDATA%\UniPhoto`, removable drive-letter protection `E:\`, Unicode/Vietnamese path decoding across `ai_engine` / `quality_scorer` / `aesthetic_scorer`, and root drive `folder_name` serialization):
+### Run the Isolated Unit Test Suite (`12/12` Tests)
+`tests/test_uniphoto_pipeline.py` uses Python's `unittest` with an isolated in-memory SQLite database (`sqlite:///:memory:`), temporary image directories, and `UNIPHOTO_TRASH_DIR` / `UNIPHOTO_VOLUMES_ROOT` / `UNIPHOTO_UNMOUNTED_VOLUMES` (never touching `data/uniphoto.db` or system Trash) to test EXIF orientation & pure-DCT `pHash` scanning, `O(B·N)` chunked cosine similarity equivalence (`1,200 × 1280-d`), on-demand aesthetic/tilt/portrait scoring, collision-safe Trash moves, cooperative cancellation (`request_cancel`), server-side pagination totals (`limit`/`offset`), mount-aware external volume protection, packaged runtime configuration (`/api/v1/health`, dynamic `settings.PORT` thumbnail URLs, `UNIPHOTO_DATA_DIR` / `UNIPHOTO_PACKAGED=1`, and offline `UNIPHOTO_MODELS_DIR` lookup), mathematical slim-runtime equivalence (`calculate_phash` bit-for-bit equality against `imagehash.phash` + ONNX `cv2.dnn` vs PyTorch `MobileNetV2` cosine similarity `>= 0.99999`), Windows (`win32`) cross-platform support (`%LOCALAPPDATA%\UniPhoto`, removable drive-letter protection `E:\`, Unicode/Vietnamese path decoding across `ai_engine` / `quality_scorer` / `aesthetic_scorer`, and root drive `folder_name` serialization), and multi-file release version sync & `scripts/bump_version.py` automation:
 ```bash
 .venv/bin/python -m unittest discover -s tests -p "test_*.py" -v
 ```
 
 ### Run Full-Stack Verification
-Verify Python syntax/imports, the `11/11` `unittest` pipeline suite, Frontend TypeScript (`tsc`) + Vite production build, and (optionally) Rust/Tauri `cargo check`:
+Verify Python syntax/imports, the `12/12` `unittest` pipeline suite, Frontend TypeScript (`tsc`) + Vite production build, and (optionally) Rust/Tauri `cargo check`:
 ```bash
 bash .agents/skills/uniphoto/scripts/verify.sh
 bash .agents/skills/uniphoto/scripts/verify.sh --tauri

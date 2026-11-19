@@ -28,7 +28,18 @@ import { useI18n } from "./i18n/I18nContext";
 import LanguageSwitcher from "./components/LanguageSwitcher";
 import GlassModal from "./components/GlassModal";
 import GlassToast, { ToastTone } from "./components/GlassToast";
+import TutorialModal, {
+  hasSeenTutorial,
+  markTutorialSeen,
+} from "./components/TutorialModal";
+import UpdateModal from "./components/UpdateModal";
 import { IconWarning } from "./components/MacIcons";
+import {
+  FALLBACK_APP_VERSION,
+  UpdateInfo,
+  checkForAppUpdate,
+  resolveCurrentAppVersion,
+} from "./utils/updater";
 import HomePage from "./pages/HomePage";
 import ScanningPage from "./pages/ScanningPage";
 import ResultsPage from "./pages/ResultsPage";
@@ -38,6 +49,8 @@ const PAGE_SIZE = 100;
 type ToastState =
   | { id: number; tone: "success"; kind: "trashed"; count: number; bytes: number }
   | { id: number; tone: "success"; kind: "aesthetic"; count: number }
+  | { id: number; tone: "success"; kind: "update_up_to_date"; version: string }
+  | { id: number; tone: "warning"; kind: "update_check_failed" }
   | { id: number; tone: "warning"; kind: "no_selection" }
   | { id: number; tone: "warning"; kind: "cancelled" }
   | {
@@ -146,6 +159,15 @@ export default function App() {
     selectedBytes: number;
   } | null>(null);
 
+  const [appVersion, setAppVersion] = useState<string>(FALLBACK_APP_VERSION);
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState<boolean>(false);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false);
+  const checkingUpdateRef = useRef<boolean>(false);
+
+  const [isTutorialOpen, setIsTutorialOpen] = useState<boolean>(false);
+  const autoTutorialCheckedRef = useRef<boolean>(false);
+
   const toastSeqRef = useRef<number>(0);
   const [toast, setToast] = useState<ToastState | null>(null);
 
@@ -182,6 +204,10 @@ export default function App() {
         );
       case "aesthetic":
         return t.app.toastAestheticSuccess(toast.count);
+      case "update_up_to_date":
+        return t.update.toastUpToDate(toast.version);
+      case "update_check_failed":
+        return t.update.toastCheckFailed;
       case "no_selection":
         return t.app.alertNoSelection;
       case "cancelled":
@@ -358,6 +384,79 @@ export default function App() {
     setIsBootingBackend(true);
     setBootAttempt((prev) => prev + 1);
   }, []);
+
+  const handleCloseTutorial = useCallback(() => {
+    markTutorialSeen();
+    setIsTutorialOpen(false);
+  }, []);
+
+  const handleOpenTutorial = useCallback(() => {
+    setIsTutorialOpen(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isBootingBackend && backendReady && !autoTutorialCheckedRef.current) {
+      autoTutorialCheckedRef.current = true;
+      if (!hasSeenTutorial()) {
+        setIsTutorialOpen(true);
+      }
+    }
+  }, [isBootingBackend, backendReady]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void resolveCurrentAppVersion().then((ver) => {
+      if (!cancelled) {
+        setAppVersion(ver);
+      }
+    });
+
+    void checkForAppUpdate({ isWindows }).then((res) => {
+      if (cancelled) return;
+      setAppVersion(res.currentVersion);
+      if (res.status !== "error") {
+        setUpdateInfo(res.info);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isWindows]);
+
+  const handleManualCheckUpdate = useCallback(async () => {
+    if (checkingUpdateRef.current) return;
+    checkingUpdateRef.current = true;
+    setIsCheckingUpdate(true);
+    try {
+      const res = await checkForAppUpdate({ force: true, isWindows });
+      setAppVersion(res.currentVersion);
+      if (res.status === "update_available" && res.info) {
+        setUpdateInfo(res.info);
+        setIsUpdateModalOpen(true);
+      } else if (res.status === "up_to_date") {
+        setUpdateInfo(res.info);
+        toastSeqRef.current += 1;
+        setToast({
+          id: toastSeqRef.current,
+          tone: "success",
+          kind: "update_up_to_date",
+          version: res.currentVersion,
+        });
+      } else {
+        toastSeqRef.current += 1;
+        setToast({
+          id: toastSeqRef.current,
+          tone: "warning",
+          kind: "update_check_failed",
+        });
+      }
+    } finally {
+      checkingUpdateRef.current = false;
+      setIsCheckingUpdate(false);
+    }
+  }, [isWindows]);
 
   useEffect(() => {
     let cancelled = false;
@@ -891,6 +990,12 @@ export default function App() {
             disconnectedVolumes.length > 0
           }
           totalAllBytes={totalAllBytes}
+          appVersion={appVersion}
+          updateInfo={updateInfo}
+          isCheckingUpdate={isCheckingUpdate}
+          onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
+          onManualCheckUpdate={handleManualCheckUpdate}
+          onOpenTutorial={handleOpenTutorial}
           onPickFolder={handlePickFolder}
           onStartScan={handleStartScan}
           onOpenResults={() => setScreen("results")}
@@ -927,7 +1032,15 @@ export default function App() {
           sidebarFilter={sidebarFilter}
           setSidebarFilter={setSidebarFilter}
           isCleaning={isCleaning}
-          isModalOpen={cleanupConfirm !== null}
+          isModalOpen={
+            cleanupConfirm !== null || isUpdateModalOpen || isTutorialOpen
+          }
+          appVersion={appVersion}
+          updateInfo={updateInfo}
+          isCheckingUpdate={isCheckingUpdate}
+          onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
+          onManualCheckUpdate={handleManualCheckUpdate}
+          onOpenTutorial={handleOpenTutorial}
           onBackHome={() => setScreen("home")}
           onRefresh={() => loadData(false)}
           onRunAiCluster={handleRunAiClusterFromResults}
@@ -956,6 +1069,14 @@ export default function App() {
         onCancel={handleCancelSmartCleanup}
         onConfirm={handleConfirmSmartCleanup}
       />
+
+      <UpdateModal
+        open={isUpdateModalOpen && updateInfo !== null}
+        info={updateInfo}
+        onClose={() => setIsUpdateModalOpen(false)}
+      />
+
+      <TutorialModal open={isTutorialOpen} onClose={handleCloseTutorial} />
 
       <GlassToast
         toastId={toast?.id ?? null}

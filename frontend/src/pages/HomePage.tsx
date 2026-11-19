@@ -1,7 +1,12 @@
 import CustomCheckbox from "../components/CustomCheckbox";
 import LanguageSwitcher from "../components/LanguageSwitcher";
-import { IconFolder, IconPhotoStack } from "../components/MacIcons";
+import {
+  IconFolder,
+  IconPhotoStack,
+  IconQuestionCircle,
+} from "../components/MacIcons";
 import { useI18n } from "../i18n/I18nContext";
+import { FALLBACK_APP_VERSION, UpdateInfo } from "../utils/updater";
 
 interface HomePageProps {
   folderPath: string;
@@ -14,6 +19,12 @@ interface HomePageProps {
   setClearOldDataBeforeScan: (val: boolean) => void;
   hasExistingResults: boolean;
   totalAllBytes: number;
+  appVersion?: string;
+  updateInfo?: UpdateInfo | null;
+  isCheckingUpdate?: boolean;
+  onOpenUpdateModal?: () => void;
+  onManualCheckUpdate?: () => void;
+  onOpenTutorial?: () => void;
   onPickFolder: () => void;
   onStartScan: () => void;
   onOpenResults: () => void;
@@ -30,6 +41,12 @@ export default function HomePage({
   setClearOldDataBeforeScan,
   hasExistingResults,
   totalAllBytes,
+  appVersion = FALLBACK_APP_VERSION,
+  updateInfo = null,
+  isCheckingUpdate = false,
+  onOpenUpdateModal,
+  onManualCheckUpdate,
+  onOpenTutorial,
   onPickFolder,
   onStartScan,
   onOpenResults,
@@ -99,6 +116,16 @@ export default function HomePage({
         </div>
 
         <div className="flex items-center gap-2">
+          {updateInfo?.hasUpdate && (
+            <button
+              type="button"
+              onClick={onOpenUpdateModal}
+              className="bg-[#0A84FF]/15 hover:bg-[#0A84FF]/25 border border-[#0A84FF]/35 text-[#64D2FF] text-[12px] px-2.5 py-1 rounded-[7px] font-medium inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-[#30D158] shrink-0" />
+              <span>{t.update.badgeAvailable(updateInfo.latestVersion)}</span>
+            </button>
+          )}
           {hasExistingResults && (
             <button
               type="button"
@@ -111,6 +138,15 @@ export default function HomePage({
               </span>
             </button>
           )}
+          <button
+            type="button"
+            onClick={onOpenTutorial}
+            title={t.tutorial.btnOpenTutorialTooltip}
+            className="bg-[#2C2C2E] hover:bg-[#3A3A3C] text-[#E5E5EA] hover:text-white text-[12px] px-2.5 py-1 rounded-[7px] font-medium inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <IconQuestionCircle className="w-[14px] h-[14px] text-[#0A84FF]" />
+            <span>{t.tutorial.btnOpenTutorial}</span>
+          </button>
           <LanguageSwitcher compact />
         </div>
       </header>
@@ -214,8 +250,22 @@ export default function HomePage({
         </div>
       </main>
 
-      <footer className="pb-4 px-6 text-center text-[11.5px] text-[#636366] shrink-0">
-        {t.home.privacyFooter}
+      <footer className="pb-4 px-6 text-center text-[11.5px] text-[#636366] shrink-0 space-y-1">
+        <p>{t.home.privacyFooter}</p>
+        <div className="flex items-center justify-center gap-1.5 text-[11px] text-[#636366]">
+          <span className="tabular-nums">v{appVersion}</span>
+          <span aria-hidden="true">•</span>
+          <button
+            type="button"
+            disabled={isCheckingUpdate}
+            onClick={onManualCheckUpdate}
+            className="text-[#8E8E93] hover:text-[#F2F2F7] disabled:opacity-60 transition-colors cursor-pointer"
+          >
+            {isCheckingUpdate
+              ? t.update.checkingUpdate
+              : t.update.btnCheckUpdate}
+          </button>
+        </div>
       </footer>
     </div>
   );

@@ -7,6 +7,7 @@ import {
 import CustomCheckbox from "../components/CustomCheckbox";
 import LanguageSwitcher from "../components/LanguageSwitcher";
 import {
+  IconArrowDownCircle,
   IconCheckCircle,
   IconChevronDown,
   IconChevronRight,
@@ -18,6 +19,7 @@ import {
   IconGrid,
   IconKeyboard,
   IconPhotoStack,
+  IconQuestionCircle,
   IconRefresh,
   IconSearch,
   IconSidebarLeft,
@@ -30,6 +32,7 @@ import {
   IconWarning,
 } from "../components/MacIcons";
 import { useI18n } from "../i18n/I18nContext";
+import { FALLBACK_APP_VERSION, UpdateInfo } from "../utils/updater";
 import {
   BestReasonKey,
   SidebarFilter,
@@ -69,6 +72,12 @@ interface ResultsPageProps {
   setSidebarFilter: (filter: SidebarFilter) => void;
   isCleaning: boolean;
   isModalOpen?: boolean;
+  appVersion?: string;
+  updateInfo?: UpdateInfo | null;
+  isCheckingUpdate?: boolean;
+  onOpenUpdateModal?: () => void;
+  onManualCheckUpdate?: () => void;
+  onOpenTutorial?: () => void;
   onBackHome: () => void;
   onRefresh: () => void;
   onRunAiCluster: () => void;
@@ -100,6 +109,12 @@ export default function ResultsPage({
   setSidebarFilter,
   isCleaning,
   isModalOpen = false,
+  appVersion = FALLBACK_APP_VERSION,
+  updateInfo = null,
+  isCheckingUpdate = false,
+  onOpenUpdateModal,
+  onManualCheckUpdate,
+  onOpenTutorial,
   onBackHome,
   onRefresh,
   onRunAiCluster,
@@ -867,44 +882,99 @@ export default function ResultsPage({
             </div>
           </div>
 
-          {/* Bottom Pinned Status Footer */}
-          <div className="px-3 py-2.5 border-t border-white/[0.07] flex items-center justify-between gap-2 shrink-0">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-7 h-7 rounded-full bg-[#323236] border border-white/10 flex items-center justify-center shrink-0 overflow-hidden">
-                <img
-                  src="/logo.png"
-                  alt="UniPhoto"
-                  className="w-4 h-4 object-contain"
-                  onError={(e) => {
-                    e.currentTarget.style.display = "none";
-                  }}
-                />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[12px] font-medium text-white leading-tight truncate">
-                  UniPhoto
-                </p>
-                <div className="flex items-center gap-1 text-[10.5px] text-[#8E8E93] leading-tight mt-0.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#30D158] shrink-0" />
-                  <span className="truncate tabular-nums">
-                    {serverTotalFilesCount}{" "}
-                    {t.results.footerPhotosSuffix(serverTotalFilesCount)}
-                  </span>
+          <div className="shrink-0">
+            {updateInfo?.hasUpdate && (
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={onOpenUpdateModal}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onOpenUpdateModal?.();
+                  }
+                }}
+                className="mx-2.5 mb-2 rounded-[9px] px-2.5 py-2 bg-[#0A84FF]/[0.14] hover:bg-[#0A84FF]/[0.22] border border-[#0A84FF]/35 flex items-center gap-2 transition-colors cursor-pointer"
+              >
+                <IconArrowDownCircle className="w-[16px] h-[16px] text-[#64D2FF] shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[12px] font-medium text-[#F2F2F7] leading-tight truncate">
+                      {t.update.badgeAvailable(updateInfo.latestVersion)}
+                    </span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#30D158] shrink-0" />
+                  </div>
+                  <p className="text-[10.5px] text-[#AEAEB2] leading-tight mt-0.5 truncate">
+                    {t.update.sidebarUpdateSub}
+                  </p>
                 </div>
               </div>
-            </div>
+            )}
 
-            <div className="flex items-center gap-1 shrink-0">
-              <LanguageSwitcher compact />
-              <button
-                type="button"
-                onClick={onRefresh}
-                title={t.results.btnRefresh}
-                aria-label={t.results.btnRefresh}
-                className="w-6 h-6 rounded-md hover:bg-white/[0.09] text-[#AEAEB2] hover:text-white flex items-center justify-center transition-colors cursor-pointer"
-              >
-                <IconRefresh className="w-[14px] h-[14px]" />
-              </button>
+            {/* Bottom Pinned Status Footer */}
+            <div className="px-2.5 py-2.5 border-t border-white/[0.07] flex items-center justify-between gap-1.5 shrink-0">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <div className="w-6 h-6 rounded-full bg-[#323236] border border-white/10 flex items-center justify-center shrink-0 overflow-hidden">
+                  <img
+                    src="/logo.png"
+                    alt="UniPhoto"
+                    className="w-3.5 h-3.5 object-contain"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11.5px] font-medium text-white leading-tight truncate">
+                    UniPhoto{" "}
+                    <span className="text-[10px] font-normal text-[#8E8E93] tabular-nums">
+                      v{appVersion}
+                    </span>
+                  </p>
+                  <div className="flex items-center gap-1 text-[10.5px] text-[#8E8E93] leading-tight mt-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#30D158] shrink-0" />
+                    <span className="truncate tabular-nums">
+                      {serverTotalFilesCount}{" "}
+                      {t.results.footerPhotosSuffix(serverTotalFilesCount)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-0.5 shrink-0">
+                <LanguageSwitcher compact />
+                <button
+                  type="button"
+                  disabled={isCheckingUpdate}
+                  onClick={onManualCheckUpdate}
+                  title={
+                    isCheckingUpdate
+                      ? t.update.checkingUpdate
+                      : t.update.btnCheckUpdate
+                  }
+                  aria-label={t.update.btnCheckUpdate}
+                  className={`w-6 h-6 rounded-md hover:bg-white/[0.09] flex items-center justify-center transition-colors cursor-pointer disabled:opacity-60 ${
+                    updateInfo?.hasUpdate
+                      ? "text-[#0A84FF] hover:text-[#64D2FF]"
+                      : "text-[#AEAEB2] hover:text-white"
+                  }`}
+                >
+                  <IconArrowDownCircle
+                    className={`w-[14px] h-[14px] ${
+                      isCheckingUpdate ? "animate-pulse text-[#0A84FF]" : ""
+                    }`}
+                  />
+                </button>
+                <button
+                  type="button"
+                  onClick={onRefresh}
+                  title={t.results.btnRefresh}
+                  aria-label={t.results.btnRefresh}
+                  className="w-6 h-6 rounded-md hover:bg-white/[0.09] text-[#AEAEB2] hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <IconRefresh className="w-[14px] h-[14px]" />
+                </button>
+              </div>
             </div>
           </div>
         </aside>
@@ -954,6 +1024,21 @@ export default function ResultsPage({
                 )}
               </p>
             </div>
+
+            {isSidebarCollapsed && updateInfo?.hasUpdate && (
+              <button
+                type="button"
+                onClick={onOpenUpdateModal}
+                title={t.update.badgeAvailable(updateInfo.latestVersion)}
+                className="bg-[#0A84FF]/15 hover:bg-[#0A84FF]/25 border border-[#0A84FF]/35 text-[#64D2FF] text-[11px] px-2 py-0.5 rounded-[6px] font-medium inline-flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-[#30D158] shrink-0" />
+                <IconArrowDownCircle className="w-[13px] h-[13px] shrink-0" />
+                <span className="tabular-nums">
+                  v{updateInfo.latestVersion}
+                </span>
+              </button>
+            )}
           </div>
 
           <div className="mt-2.5 flex items-center gap-1.5">
@@ -1346,6 +1431,21 @@ export default function ResultsPage({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setIsShortcutsOpen(false);
+                onOpenTutorial?.();
+              }}
+              title={t.tutorial.btnOpenTutorialTooltip}
+              className="whitespace-nowrap inline-flex items-center gap-1.5 text-[12px] px-2.5 py-1 rounded-[6px] bg-[#2C2C2E] hover:bg-[#3A3A3C] text-[#E5E5EA] hover:text-white transition-colors cursor-pointer"
+            >
+              <IconQuestionCircle className="w-[15px] h-[15px]" />
+              <span className="hidden xl:inline">
+                {t.tutorial.btnOpenTutorial}
+              </span>
+            </button>
+
             <div ref={shortcutsContainerRef} className="relative shrink-0">
               <button
                 type="button"

@@ -25,6 +25,10 @@ export function getInitialLanguage(): Language {
   return "vi";
 }
 
+function stripLeadingV(version: string): string {
+  return version.trim().replace(/^[vV]/, "");
+}
+
 function createViTranslations(isWindows: boolean) {
   return {
     app: {
@@ -238,6 +242,93 @@ function createViTranslations(isWindows: boolean) {
       btnFreeUpTooltip: isWindows
         ? "Chuyển an toàn các ảnh đã chọn vào Thùng rác (có thể khôi phục bất cứ lúc nào)"
         : "Chuyển an toàn các ảnh đã chọn vào Thùng rác macOS (có thể khôi phục bất cứ lúc nào)",
+    },
+    update: {
+      badgeAvailable: (version: string) =>
+        `Có bản v${stripLeadingV(version)}`,
+      sidebarUpdateSub: "Nhấn để xem & tải bản mới",
+      btnCheckUpdate: "Kiểm tra cập nhật",
+      checkingUpdate: "Đang kiểm tra...",
+      modalTitle: (version: string) =>
+        `Đã có UniPhoto v${stripLeadingV(version)}`,
+      versionTransition: (current: string, latest: string) =>
+        `v${stripLeadingV(current)} → v${stripLeadingV(latest)}`,
+      releaseNotesLabel: "Điểm mới trong phiên bản này",
+      defaultNotes:
+        "Bản cập nhật mới cải thiện hiệu năng xử lý ảnh, độ ổn định và trải nghiệm sử dụng.",
+      safeUpgradeHint: isWindows
+        ? "Cài đè trực tiếp lên bản cũ — giữ nguyên 100% lịch sử quét và cài đặt trong AppData."
+        : "Kéo đè vào Applications — giữ nguyên 100% lịch sử quét và cài đặt trong Application Support.",
+      macGatekeeperHint:
+        "Nếu macOS hỏi xác minh lần đầu mở bản mới, chạy trong Terminal:",
+      btnViewReleasePage: "Xem trên GitHub",
+      btnLater: "Để sau",
+      btnDownload: "Tải bản cập nhật",
+      toastUpToDate: (version: string) =>
+        `Bạn đang dùng phiên bản mới nhất (v${stripLeadingV(version)})`,
+      toastCheckFailed:
+        "Không thể kiểm tra cập nhật lúc này. Vui lòng kiểm tra kết nối mạng và thử lại sau.",
+    },
+    tutorial: {
+      btnOpenTutorial: "Hướng dẫn",
+      btnOpenTutorialTooltip: "Xem hướng dẫn sử dụng nhanh",
+      badgeStep: (current: number, total: number) =>
+        `Bước ${current} / ${total}`,
+      btnSkip: "Bỏ qua",
+      btnPrev: "Quay lại",
+      btnNext: "Tiếp theo",
+      btnFinish: "Bắt đầu ngay",
+      stepDotAria: (step: number) => `Chuyển đến bước ${step}`,
+      previewOfflineBadge: "100% Ngoại tuyến",
+      previewFolderSample: isWindows
+        ? "D:\\Photos\\DuLich_2026"
+        : "/Volumes/SSD/Photos_2026",
+      previewBurstBadge: "Loạt chụp AI",
+      previewSafeTrashBadge: isWindows
+        ? "Khôi phục từ Recycle Bin bất cứ lúc nào"
+        : "Khôi phục từ Thùng rác macOS bất cứ lúc nào",
+      previewTrashTarget: isWindows ? "Recycle Bin" : "Thùng rác",
+      step1Title: "Chọn hoặc kéo-thả thư mục ảnh",
+      step1Desc: isWindows
+        ? "Chọn bất kỳ thư mục ảnh nào trên máy tính hoặc ổ cứng rời để UniPhoto tự động kiểm tra."
+        : "Chọn bất kỳ thư mục ảnh nào trên máy Mac hoặc ổ cứng rời để UniPhoto tự động kiểm tra.",
+      step1Point1: isWindows
+        ? "Nhấn duyệt trong Explorer hoặc kéo-thả trực tiếp thư mục vào cửa sổ ứng dụng."
+        : "Nhấn duyệt trong Finder hoặc kéo-thả trực tiếp thư mục vào cửa sổ ứng dụng.",
+      step1Point2:
+        "Hỗ trợ định dạng .jpg, .jpeg, .png, .heic cùng các ổ đĩa gắn ngoài.",
+      step1Point3: isWindows
+        ? "Xử lý ngoại tuyến 100% — ảnh của bạn không bao giờ rời khỏi máy tính."
+        : "Xử lý ngoại tuyến 100% — ảnh của bạn không bao giờ rời khỏi máy Mac.",
+      step2Title: "Ảnh trùng hệt & Ảnh chụp tương tự",
+      step2Desc:
+        "Kết quả được tách rõ thành hai danh mục trực quan trong giao diện 3 cột tốc độ cao.",
+      step2Point1:
+        "Ảnh trùng nhau: tìm bản sao giống hệt 100% và tự động giữ lại bản có dung lượng lớn nhất.",
+      step2Point2:
+        "Ảnh tương tự: AI ngoại tuyến gom các loạt chụp liên tiếp (burst) hoặc góc chụp gần giống nhau.",
+      step2Point3:
+        "Chuyển linh hoạt giữa phím 1 (Xem lớn) và phím 2 (So sánh cạnh nhau) để đối chiếu nhanh.",
+      step3Title: "Chấm điểm thẩm mỹ AI theo yêu cầu",
+      step3Desc:
+        "Trong mục Ảnh tương tự, bạn có thể chạy phân tích chuyên sâu bất cứ khi nào cần chọn ảnh đẹp nhất.",
+      step3Point1:
+        "Nhấn Chấm điểm thẩm mỹ ngay trong thanh công cụ Ảnh tương tự khi cần xếp hạng.",
+      step3Point2:
+        "Phát hiện mắt nhắm, khuôn mặt mờ, đường chân trời nghiêng và bố cục 1/3.",
+      step3Point3:
+        "Tự động đề xuất Giữ cho khung hình sắc nét, mắt mở rõ và cân đối nhất mỗi nhóm.",
+      step4Title: "Chọn nhanh & Dọn dẹp an toàn",
+      step4Desc:
+        "Giải phóng dung lượng ổ đĩa chỉ trong vài giây mà không lo mất nhầm ảnh gốc.",
+      step4Point1: isWindows
+        ? "Dùng Chọn tự động (Ctrl+A) hoặc phím Space — luôn giữ an toàn 1 ảnh tốt nhất mỗi nhóm."
+        : "Dùng Chọn tự động (⌘A) hoặc phím Space — luôn giữ an toàn 1 ảnh tốt nhất mỗi nhóm.",
+      step4Point2:
+        "Điều hướng siêu tốc với ←/→ (đổi ảnh), ↑/↓ (đổi nhóm), cùng phím P / F để mở xem nhanh.",
+      step4Point3: isWindows
+        ? "Chuyển ảnh đã chọn an toàn vào Recycle Bin — khôi phục lại bất cứ lúc nào."
+        : "Chuyển ảnh đã chọn an toàn vào Thùng rác macOS — khôi phục lại bất cứ lúc nào.",
     },
   };
 }
@@ -489,15 +580,102 @@ function createEnTranslations(isWindows: boolean): Translations {
         ? "Safely move selected photos to Recycle Bin (restorable anytime)"
         : "Safely move selected photos to macOS Trash (restorable anytime)",
     },
+    update: {
+      badgeAvailable: (version: string) =>
+        `Update v${stripLeadingV(version)}`,
+      sidebarUpdateSub: "Click to view & download",
+      btnCheckUpdate: "Check for Updates",
+      checkingUpdate: "Checking...",
+      modalTitle: (version: string) =>
+        `UniPhoto v${stripLeadingV(version)} Available`,
+      versionTransition: (current: string, latest: string) =>
+        `v${stripLeadingV(current)} → v${stripLeadingV(latest)}`,
+      releaseNotesLabel: "What’s New",
+      defaultNotes:
+        "This update includes performance improvements, stability fixes, and UI refinements.",
+      safeUpgradeHint: isWindows
+        ? "Install directly over the current version — 100% of your scan history and settings in AppData are preserved."
+        : "Replace the existing app in Applications — 100% of your scan history and settings in Application Support are preserved.",
+      macGatekeeperHint:
+        "If macOS Gatekeeper prompts on first launch, run in Terminal:",
+      btnViewReleasePage: "Release Page",
+      btnLater: "Later",
+      btnDownload: "Download Update",
+      toastUpToDate: (version: string) =>
+        `You’re on the latest version (v${stripLeadingV(version)})`,
+      toastCheckFailed:
+        "Unable to check for updates right now. Please check your connection and try again.",
+    },
+    tutorial: {
+      btnOpenTutorial: "Guide",
+      btnOpenTutorialTooltip: "Open quick user guide",
+      badgeStep: (current: number, total: number) =>
+        `Step ${current} of ${total}`,
+      btnSkip: "Skip",
+      btnPrev: "Previous",
+      btnNext: "Next",
+      btnFinish: "Get Started",
+      stepDotAria: (step: number) => `Go to step ${step}`,
+      previewOfflineBadge: "100% Offline",
+      previewFolderSample: isWindows
+        ? "D:\\Photos\\Vacation_2026"
+        : "/Volumes/SSD/Photos_2026",
+      previewBurstBadge: "AI Burst",
+      previewSafeTrashBadge: isWindows
+        ? "Restorable from Recycle Bin anytime"
+        : "Restorable from macOS Trash anytime",
+      previewTrashTarget: isWindows ? "Recycle Bin" : "Trash",
+      step1Title: "Pick or Drag & Drop a Folder",
+      step1Desc: isWindows
+        ? "Choose any photo folder on your PC or external drive for UniPhoto to scan automatically."
+        : "Choose any photo folder on your Mac or external drive for UniPhoto to scan automatically.",
+      step1Point1: isWindows
+        ? "Click to browse in Explorer or drag & drop a folder directly onto the app window."
+        : "Click to browse in Finder or drag & drop a folder directly onto the app window.",
+      step1Point2:
+        "Supports .jpg, .jpeg, .png, and .heic formats as well as external drives.",
+      step1Point3: isWindows
+        ? "100% offline processing — your photos never leave your PC."
+        : "100% offline processing — your photos never leave your Mac.",
+      step2Title: "Exact Duplicates vs. Similar Shots",
+      step2Desc:
+        "Results are cleanly separated into two categories inside a fast 3-pane workspace.",
+      step2Point1:
+        "Exact Duplicates: detects 100% identical copies and automatically keeps the largest file size.",
+      step2Point2:
+        "Similar Photos: offline AI groups burst sequences and similar-angle shots together.",
+      step2Point3:
+        "Switch effortlessly between 1 (Large View) and 2 (Side-by-Side Compare) to inspect details.",
+      step3Title: "On-Demand AI Aesthetic Scoring",
+      step3Desc:
+        "Inside Similar Photos, run deep AI scoring whenever you want help picking the best frame.",
+      step3Point1:
+        "Click Score Aesthetics inside Similar Photos whenever you need AI ranking.",
+      step3Point2:
+        "Detects closed eyes, blurry faces, tilted horizons, and rule-of-thirds composition.",
+      step3Point3:
+        "Automatically highlights the sharpest, best-composed frame in each group as Keep.",
+      step4Title: "Fast Selection & Safe Cleanup",
+      step4Desc:
+        "Reclaim gigabytes of disk space in seconds without risking permanent photo loss.",
+      step4Point1: isWindows
+        ? "Use Auto Select (Ctrl+A) or Space — always keeps 1 best photo safe per group."
+        : "Use Auto Select (⌘A) or Space — always keeps 1 best photo safe per group.",
+      step4Point2:
+        "Navigate rapidly with ←/→ (photos), ↑/↓ (groups), and P / F to preview or reveal files.",
+      step4Point3: isWindows
+        ? "Moves selected photos safely to the Windows Recycle Bin — restorable anytime."
+        : "Moves selected photos safely to macOS Trash — restorable anytime.",
+    },
   };
 }
 
-const macTranslations: Record<Language, Translations> = {
+export const macTranslations: Record<Language, Translations> = {
   vi: createViTranslations(false),
   en: createEnTranslations(false),
 };
 
-const winTranslations: Record<Language, Translations> = {
+export const winTranslations: Record<Language, Translations> = {
   vi: createViTranslations(true),
   en: createEnTranslations(true),
 };

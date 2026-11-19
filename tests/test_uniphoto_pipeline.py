@@ -3,7 +3,9 @@ import importlib.util
 import json
 import math
 import os
+import re
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -1688,6 +1690,203 @@ class TestUniPhotoPipeline(unittest.TestCase):
         self.assertEqual(serialized_root["file_name"], "IMG_001.jpg")
         self.assertTrue(bool(serialized_root["folder_name"].strip()))
         self.assertEqual(serialized_root["folder_name"], "D:\\")
+
+    def test_12_version_sync_and_bump_script(self) -> None:
+        bump_script = REPO_ROOT / "scripts" / "bump_version.py"
+        macos_build_script = REPO_ROOT / "scripts" / "build_macos_app.sh"
+        workflow_file = REPO_ROOT / ".github" / "workflows" / "build-windows.yml"
+        self.assertTrue(bump_script.is_file(), f"Missing {bump_script}")
+        self.assertTrue(os.access(bump_script, os.X_OK), "bump_version.py should be executable")
+
+        # 1) Live repository version sync check must pass across all 6 files
+        live_version = Settings().VERSION
+        live_check = subprocess.run(
+            [sys.executable, str(bump_script), "--check"],
+            cwd=str(REPO_ROOT),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(
+            live_check.returncode,
+            0,
+            f"Expected live repo version check to exit 0, got stderr={live_check.stderr}",
+        )
+        self.assertIn(live_version, live_check.stdout)
+        self.assertIn("All 6 version files are in sync", live_check.stdout)
+
+        # 2) build_macos_app.sh must read version dynamically from tauri.conf.json & create .zip via ditto
+        macos_sh_text = macos_build_script.read_text(encoding="utf-8")
+        self.assertIn("tauri.conf.json", macos_sh_text)
+        self.assertIsNone(
+            re.search(r'(?m)^\s*APP_VERSION="0\.1\.0"\s*$', macos_sh_text),
+            "APP_VERSION must be extracted dynamically from tauri.conf.json, not hardcoded",
+        )
+        self.assertIn("ditto -c -k --sequesterRsrc --keepParent", macos_sh_text)
+        self.assertIn("UniPhoto_${APP_VERSION}_${ARCH_LABEL}.zip", macos_sh_text)
+
+        # 3) Dual-OS workflow file includes both build-macos (macos-14) and build-windows (windows-latest)
+        workflow_text = workflow_file.read_text(encoding="utf-8")
+        self.assertIn("build-macos:", workflow_text)
+        self.assertIn("runs-on: macos-14", workflow_text)
+        self.assertIn("build-windows:", workflow_text)
+        self.assertIn("runs-on: windows-latest", workflow_text)
+        self.assertIn("UniPhoto-macOS-aarch64-Installers", workflow_text)
+
+        # 4) Isolated temp-dir bump ("v0.2.5"), dependency preservation, --check, and invalid semver rejection
+        versioned_rel_paths = (
+            "app/core/config.py",
+            "frontend/package.json",
+            "frontend/src-tauri/Cargo.toml",
+            "frontend/src-tauri/tauri.conf.json",
+            "frontend/src/utils/updater.ts",
+            "website/script.js",
+        )
+        with tempfile.TemporaryDirectory(prefix="uniphoto_bump_test_") as tmp_dir:
+            tmp_root = Path(tmp_dir)
+            for rel in versioned_rel_paths:
+                src = REPO_ROOT / rel
+                dst = tmp_root / rel
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, dst)
+
+            orig_pkg_json = json.loads(
+                (tmp_root / "frontend/package.json").read_text(encoding="utf-8")
+            )
+            orig_cargo_lines = (
+                (tmp_root / "frontend/src-tauri/Cargo.toml")
+                .read_text(encoding="utf-8")
+                .splitlines()
+            )
+            orig_non_pkg_cargo_lines = [
+                line for i, line in enumerate(orig_cargo_lines) if i != 2
+            ]
+
+            bump_res = subprocess.run(
+                [sys.executable, str(bump_script), "v0.2.5", "--root", str(tmp_root)],
+                cwd=str(REPO_ROOT),
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(
+                bump_res.returncode,
+                0,
+                f"Expected bump v0.2.5 to exit 0, got stderr={bump_res.stderr}",
+            )
+            self.assertIn('git commit -m "chore: release v0.2.5"', bump_res.stdout)
+            self.assertIn("git tag v0.2.5", bump_res.stdout)
+
+            # Verify all 6 files updated cleanly to 0.2.5
+            cfg_after = (tmp_root / "app/core/config.py").read_text(encoding="utf-8")
+            self.assertIn('VERSION: str = "0.2.5"', cfg_after)
+            if live_version != "0.2.5":
+                self.assertNotIn(f'VERSION: str = "{live_version}"', cfg_after)
+
+            pkg_after = json.loads(
+                (tmp_root / "frontend/package.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(pkg_after["version"], "0.2.5")
+            self.assertEqual(pkg_after["dependencies"], orig_pkg_json["dependencies"])
+            self.assertEqual(
+                pkg_after["devDependencies"], orig_pkg_json["devDependencies"]
+            )
+
+            cargo_after_text = (tmp_root / "frontend/src-tauri/Cargo.toml").read_text(
+                encoding="utf-8"
+            )
+            cargo_after_lines = cargo_after_text.splitlines()
+            self.assertIn('version = "0.2.5"', cargo_after_lines[:7])
+            self.assertIn(
+                'tauri-build = { version = "2", features = [] }', cargo_after_text
+            )
+            self.assertIn(
+                'tauri = { version = "2", features = ["macos-private-api"] }',
+                cargo_after_text,
+            )
+            self.assertIn(
+                'serde = { version = "1", features = ["derive"] }', cargo_after_text
+            )
+            self.assertEqual(
+                [line for i, line in enumerate(cargo_after_lines) if i != 2],
+                orig_non_pkg_cargo_lines,
+            )
+
+            tauri_after = json.loads(
+                (tmp_root / "frontend/src-tauri/tauri.conf.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(tauri_after["version"], "0.2.5")
+
+            updater_after = (tmp_root / "frontend/src/utils/updater.ts").read_text(
+                encoding="utf-8"
+            )
+            self.assertIn('export const FALLBACK_APP_VERSION = "0.2.5";', updater_after)
+            if live_version != "0.2.5":
+                self.assertNotIn(
+                    f'export const FALLBACK_APP_VERSION = "{live_version}";',
+                    updater_after,
+                )
+
+            site_js_after = (tmp_root / "website/script.js").read_text(encoding="utf-8")
+            self.assertIn('version: "v0.2.5"', site_js_after)
+            self.assertIn("UniPhoto_0.2.5_aarch64.dmg", site_js_after)
+            self.assertIn("UniPhoto_0.2.5_aarch64.zip", site_js_after)
+            self.assertIn("UniPhoto_0.2.5_x64-setup.exe", site_js_after)
+            if live_version != "0.2.5":
+                self.assertNotIn(live_version, site_js_after)
+
+            # Verify --check passes on bumped directory
+            tmp_check = subprocess.run(
+                [sys.executable, str(bump_script), "--check", "--root", str(tmp_root)],
+                cwd=str(REPO_ROOT),
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(tmp_check.returncode, 0, tmp_check.stderr)
+            self.assertIn("0.2.5", tmp_check.stdout)
+
+            # Verify invalid semver strings exit non-zero without corrupting synced 0.2.5 files
+            for bad_ver in ("0.2", "invalid", "0.2.5-beta.1"):
+                bad_res = subprocess.run(
+                    [sys.executable, str(bump_script), bad_ver, "--root", str(tmp_root)],
+                    cwd=str(REPO_ROOT),
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                self.assertNotEqual(
+                    bad_res.returncode,
+                    0,
+                    f"Expected invalid version '{bad_ver}' to fail",
+                )
+
+            still_synced = subprocess.run(
+                [sys.executable, str(bump_script), "--check", "--root", str(tmp_root)],
+                cwd=str(REPO_ROOT),
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(still_synced.returncode, 0, still_synced.stderr)
+            self.assertIn("0.2.5", still_synced.stdout)
+
+            # Verify mismatch detection exits non-zero when one file drifts
+            drifted_pkg = dict(pkg_after)
+            drifted_pkg["version"] = "0.9.9"
+            (tmp_root / "frontend/package.json").write_text(
+                json.dumps(drifted_pkg, indent=2) + "\n", encoding="utf-8"
+            )
+            drift_check = subprocess.run(
+                [sys.executable, str(bump_script), "--check", "--root", str(tmp_root)],
+                cwd=str(REPO_ROOT),
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertNotEqual(drift_check.returncode, 0)
 
 
 if __name__ == "__main__":

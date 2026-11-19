@@ -1,9 +1,9 @@
 const SITE_CONFIG = {
-  version: "v0.1.0",
+  version: "v0.2.0",
   githubRepo: "hungtun/UniPhoto", // Đổi thành "<username>/<repo>" của bạn trên GitHub
-  downloadUrlDmg: "https://github.com/hungtun/UniPhoto/releases/latest/download/UniPhoto_0.1.0_aarch64.dmg",
-  downloadUrlZip: "https://github.com/hungtun/UniPhoto/releases/latest/download/UniPhoto_0.1.0_aarch64.zip",
-  downloadUrlWinExe: "https://github.com/hungtun/UniPhoto/releases/latest/download/UniPhoto_0.1.0_x64-setup.exe",
+  downloadUrlDmg: "https://github.com/hungtun/UniPhoto/releases/latest/download/UniPhoto_0.2.0_aarch64.dmg",
+  downloadUrlZip: "https://github.com/hungtun/UniPhoto/releases/latest/download/UniPhoto_0.2.0_aarch64.zip",
+  downloadUrlWinExe: "https://github.com/hungtun/UniPhoto/releases/latest/download/UniPhoto_0.2.0_x64-setup.exe",
   winSizeLabel: "~98 MB",
   githubUrl: "https://github.com/hungtun/UniPhoto",
   autoFetchLatestRelease: true,

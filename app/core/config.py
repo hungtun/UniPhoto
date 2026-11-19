@@ -47,7 +47,7 @@ DEFAULT_SQLITE_PATH = RESOLVED_DATA_DIR / "uniphoto.db"
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "UniPhoto API"
-    VERSION: str = "0.1.0"
+    VERSION: str = "0.2.0"
     API_V1_STR: str = "/api/v1"
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
@@ -79,7 +79,19 @@ class Settings(BaseSettings):
         # để SQLITE_DB_PATH="data/uniphoto.db" trong .env không ghi đè thư mục dữ liệu chỉ định.
         if is_packaged_runtime() or os.environ.get("UNIPHOTO_DATA_DIR", "").strip():
             return (init_settings, env_settings, file_secret_settings)
-        return (init_settings, env_settings, dotenv_settings, file_secret_settings)
+
+        # Bỏ qua khóa VERSION cũ trong .env cục bộ để luôn đồng bộ với VERSION trong code (bump_version.py)
+        def _dotenv_without_stale_version() -> dict:
+            data = dict(dotenv_settings())
+            data.pop("VERSION", None)
+            return data
+
+        return (
+            init_settings,
+            env_settings,
+            _dotenv_without_stale_version,
+            file_secret_settings,
+        )
 
     @model_validator(mode="after")
     def _normalize_paths(self) -> "Settings":

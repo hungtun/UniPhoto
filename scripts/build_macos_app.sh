@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ==============================================================================
-# UniPhoto — Slim Standalone macOS .app & .dmg One-Command Builder
+# UniPhoto — Slim Standalone macOS .app, .dmg & .zip One-Command Builder
 # ==============================================================================
 # Bundles:
 #   1. Validated build toolchain (auto-resolving Node.js ^20.19.0 || >=22.12.0)
@@ -11,7 +11,7 @@ set -euo pipefail
 #      (zero torch/scipy/matplotlib; reused when up-to-date or --rebuild-backend)
 #   4. Fail-fast React 19 / Vite 8 build + Tauri v2 macOS UniPhoto.app (--bundles app)
 #      with symlink-preserving rsync (-a --delete) into Contents/Resources/
-#   5. Strip + ad-hoc deep macOS code signing + in-bundle --self-test + UDZO .dmg
+#   5. Strip + ad-hoc deep macOS code signing + in-bundle --self-test + .dmg & .zip
 # ==============================================================================
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -446,7 +446,7 @@ if command -v strip >/dev/null 2>&1; then
   done < <(find "$APP_PATH/Contents/Resources/backend" -type f \( -name "*.so" -o -name "*.dylib" \) -print0)
 fi
 
-echo "==> [5/5] Applying ad-hoc deep code signature, verifying in-app --self-test & creating .dmg..."
+echo "==> [5/5] Applying ad-hoc deep code signature, verifying in-app --self-test & creating .dmg / .zip..."
 # Explicitly sign Mach-O libraries inside hidden .dylibs directories before deep bundle signing
 while IFS= read -r -d '' sign_target; do
   codesign --force --sign - "$sign_target" >/dev/null 2>&1 || true
@@ -486,7 +486,8 @@ SMOKE_LOG=""
 
 echo "    Final UniPhoto.app size: $(du -sh "$APP_PATH" | cut -f1)"
 
-APP_VERSION="0.1.0"
+APP_VERSION="$("$VENV_PYTHON" -c 'import json, sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["version"])' "$ROOT_DIR/frontend/src-tauri/tauri.conf.json" 2>/dev/null || echo "0.1.0")"
+APP_VERSION="${APP_VERSION:-0.1.0}"
 RAW_ARCH="$(uname -m)"
 case "$RAW_ARCH" in
   arm64|aarch64)
@@ -499,6 +500,20 @@ case "$RAW_ARCH" in
     ARCH_LABEL="$RAW_ARCH"
     ;;
 esac
+
+mkdir -p "$BUNDLE_ROOT/macos"
+TARGET_ZIP_PATH="$BUNDLE_ROOT/macos/UniPhoto_${APP_VERSION}_${ARCH_LABEL}.zip"
+ZIP_PATH=""
+
+if command -v ditto >/dev/null 2>&1; then
+  echo "    Creating $(basename "$TARGET_ZIP_PATH") from signed UniPhoto.app..."
+  rm -f "$TARGET_ZIP_PATH"
+  ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$TARGET_ZIP_PATH"
+  ZIP_PATH="$TARGET_ZIP_PATH"
+  echo "    Final ZIP size: $(du -sh "$ZIP_PATH" | cut -f1)"
+else
+  echo "WARN: ditto not found in PATH; skipping .zip creation." >&2
+fi
 
 mkdir -p "$BUNDLE_ROOT/dmg"
 TARGET_DMG_PATH="$BUNDLE_ROOT/dmg/UniPhoto_${APP_VERSION}_${ARCH_LABEL}.dmg"
@@ -542,10 +557,13 @@ fi
 
 echo ""
 echo "=============================================================================="
-echo "UniPhoto macOS Standalone Build Complete!"
+echo "UniPhoto macOS Standalone Build Complete! (v${APP_VERSION})"
 echo "  App Bundle : $APP_PATH ($(du -sh "$APP_PATH" | cut -f1))"
 if [[ -n "$DMG_PATH" ]]; then
   echo "  DMG Image  : $DMG_PATH ($(du -sh "$DMG_PATH" | cut -f1))"
+fi
+if [[ -n "$ZIP_PATH" ]]; then
+  echo "  ZIP Archive: $ZIP_PATH ($(du -sh "$ZIP_PATH" | cut -f1))"
 fi
 echo ""
 echo "First-launch tip on another Mac (unsigned / ad-hoc signed Gatekeeper bypass):"

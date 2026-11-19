@@ -386,6 +386,26 @@ export function IconClose({
   );
 }
 
+export function IconChevronLeft({
+  className = "w-[14px] h-[14px]",
+  strokeWidth = 1.7,
+}: MacIconProps) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={className}
+    >
+      <polyline points="12.5 4.8 7.2 10 12.5 15.2" />
+    </svg>
+  );
+}
+
 export function IconChevronRight({
   className = "w-[14px] h-[14px]",
   strokeWidth = 1.7,
@@ -467,6 +487,50 @@ export function IconWarning({
       <path d="M8.57 3.86L2.42 14.5A1.65 1.65 0 0 0 3.85 17h12.3a1.65 1.65 0 0 0 1.43-2.5L11.43 3.86a1.65 1.65 0 0 0-2.86 0Z" />
       <line x1="10" y1="8" x2="10" y2="11.6" />
       <circle cx="10" cy="14.2" r="0.6" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function IconArrowDownCircle({
+  className = "w-[16px] h-[16px]",
+  strokeWidth = 1.7,
+}: MacIconProps) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={className}
+    >
+      <circle cx="10" cy="10" r="7.5" />
+      <line x1="10" y1="6.5" x2="10" y2="13.2" />
+      <polyline points="7.2 10.6 10 13.5 12.8 10.6" />
+    </svg>
+  );
+}
+
+export function IconQuestionCircle({
+  className = "w-[15px] h-[15px]",
+  strokeWidth = 1.7,
+}: MacIconProps) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={className}
+    >
+      <circle cx="10" cy="10" r="7.5" />
+      <path d="M8.1 7.75a1.9 1.9 0 1 1 2.85 1.65c-.52.3-.95.7-.95 1.35v.25" />
+      <circle cx="10" cy="13.9" r="0.65" fill="currentColor" stroke="none" />
     </svg>
   );
 }

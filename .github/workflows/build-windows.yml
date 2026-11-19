@@ -1,4 +1,4 @@
-name: Build Windows Desktop App (.exe & .msi)
+name: Build & Release Desktop Apps (macOS & Windows)
 
 "on":
   push:
@@ -10,6 +10,74 @@ permissions:
   contents: write
 
 jobs:
+  build-macos:
+    name: Build UniPhoto macOS Apple Silicon (.dmg & .zip)
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Set up Node.js 22 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Set up Rust stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: frontend/src-tauri
+
+      - name: Install frontend dependencies, create .venv & build macOS installers
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm --prefix frontend ci
+          python3 -m venv .venv
+          ./.venv/bin/python -m pip install --upgrade pip
+          ./.venv/bin/python -m pip install \
+            fastapi \
+            uvicorn \
+            pydantic \
+            pydantic-settings \
+            python-dotenv \
+            SQLAlchemy \
+            pillow \
+            pillow_heif \
+            numpy \
+            opencv-python \
+            mediapipe \
+            pyinstaller
+          bash scripts/build_macos_app.sh
+
+      - name: Upload macOS .dmg & .zip workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: UniPhoto-macOS-aarch64-Installers
+          if-no-files-found: error
+          path: |
+            frontend/src-tauri/target/release/bundle/dmg/*.dmg
+            frontend/src-tauri/target/release/bundle/macos/*.zip
+
+      - name: Attach macOS .dmg & .zip installers to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            frontend/src-tauri/target/release/bundle/dmg/*.dmg
+            frontend/src-tauri/target/release/bundle/macos/*.zip
+
   build-windows:
     name: Build UniPhoto Windows x64 (.exe & .msi)
     runs-on: windows-latest
