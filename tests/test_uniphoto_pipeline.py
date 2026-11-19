@@ -1725,10 +1725,10 @@ class TestUniPhotoPipeline(unittest.TestCase):
         self.assertIn("ditto -c -k --sequesterRsrc --keepParent", macos_sh_text)
         self.assertIn("UniPhoto_${APP_VERSION}_${ARCH_LABEL}.zip", macos_sh_text)
 
-        # 3) Dual-OS workflow file includes both build-macos (macos-14) and build-windows (windows-latest)
+        # 3) Dual-OS workflow file includes both build-macos (macos-latest) and build-windows (windows-latest)
         workflow_text = workflow_file.read_text(encoding="utf-8")
         self.assertIn("build-macos:", workflow_text)
-        self.assertIn("runs-on: macos-14", workflow_text)
+        self.assertIn("runs-on: macos-latest", workflow_text)
         self.assertIn("build-windows:", workflow_text)
         self.assertIn("runs-on: windows-latest", workflow_text)
         self.assertIn("UniPhoto-macOS-aarch64-Installers", workflow_text)

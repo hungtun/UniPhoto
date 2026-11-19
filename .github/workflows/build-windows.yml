@@ -12,7 +12,7 @@ permissions:
 jobs:
   build-macos:
     name: Build UniPhoto macOS Apple Silicon (.dmg & .zip)
-    runs-on: macos-14
+    runs-on: macos-latest
 
     steps:
       - name: Checkout repository

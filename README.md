@@ -30,7 +30,7 @@ UniPhoto is a local-first **macOS & Windows 10/11** desktop application that hel
 - **Slim Standalone Offline Packaging, In-App Updater & Dual-OS Auto-Release (`macOS` & `Windows`):**
   - **macOS (`bash scripts/build_macos_app.sh`):** Reads the release version dynamically from `tauri.conf.json`, builds a slim PyInstaller `--onedir` sidecar (`~268 MB`, excluding `torch`/`scipy`/`matplotlib`/`sklearn`/`imagehash`), syncs `backend/` and offline `mobilenet_v2.onnx` (`8.4 MB`) + `face_landmarker.task` (`3.6 MB`) into `UniPhoto.app` (`~288 MB`) with symlink-preserving `rsync -a --delete` and `strip -x`, verifies ad-hoc deep `codesign` + `--self-test`, and packages both a compressed `UDZO` `.dmg` (`~100 MB`) and a symlink/signature-preserving `ditto` `.zip` archive (`UniPhoto_<version>_aarch64.zip`).
   - **Windows 10/11 (`scripts/build_windows_app.ps1`):** Builds `uniphoto-backend.exe` + offline ONNX/MediaPipe models into standalone NSIS `UniPhoto_<version>_x64-setup.exe` (`~98 MB`) and `.msi` installers, storing runtime data in `%LOCALAPPDATA%\UniPhoto\uniphoto.db` with Win32 `SYNCHRONIZE` parent-process watchdog cleanup.
-  - **Level 1 In-App Updater & 1-Command Release Automation:** `frontend/src/utils/updater.ts` and `UpdateModal.tsx` check GitHub Releases (`releases/latest`, 15-min cache, offline/404-safe, plus manual check on `HomePage` & `ResultsPage`) and open the matching `.dmg`/`.zip` or `.exe`/`.msi` installer while preserving 100% of user scan history. `scripts/bump_version.py` atomically syncs all 6 version-bearing files, and pushing a `v*` tag triggers parallel `macos-14` + `windows-latest` builds in `.github/workflows/build-windows.yml`.
+  - **Level 1 In-App Updater & 1-Command Release Automation:** `frontend/src/utils/updater.ts` and `UpdateModal.tsx` check GitHub Releases (`releases/latest`, 15-min cache, offline/404-safe, plus manual check on `HomePage` & `ResultsPage`) and open the matching `.dmg`/`.zip` or `.exe`/`.msi` installer while preserving 100% of user scan history. `scripts/bump_version.py` atomically syncs all 6 version-bearing files, and pushing a `v*` tag triggers parallel `macos-latest` + `windows-latest` builds in `.github/workflows/build-windows.yml`.
 
 ---
 
@@ -250,7 +250,7 @@ pwsh -File scripts/build_windows_app.ps1
    git add -A && git commit -m "chore: release v0.2.0"
    git tag v0.2.0 && git push origin main v0.2.0
    ```
-   `.github/workflows/build-windows.yml` runs **`build-macos` (`macos-14` Apple Silicon `.dmg` & `.zip`)** and **`build-windows` (`windows-latest` x64 `.exe` & `.msi`)** in parallel and attaches all 4 installers directly to the GitHub Release via `softprops/action-gh-release@v2`—where both the **Level 1 In-App Updater** (`frontend/src/utils/updater.ts` + `UpdateModal.tsx`) and `website/script.js` automatically discover the new version and select the right OS installer.
+   `.github/workflows/build-windows.yml` runs **`build-macos` (`macos-latest` Apple Silicon `.dmg` & `.zip`)** and **`build-windows` (`windows-latest` x64 `.exe` & `.msi`)** in parallel and attaches all 4 installers directly to the GitHub Release via `softprops/action-gh-release@v2`—where both the **Level 1 In-App Updater** (`frontend/src/utils/updater.ts` + `UpdateModal.tsx`) and `website/script.js` automatically discover the new version and select the right OS installer.
 
 ---
 
