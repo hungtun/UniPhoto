@@ -519,12 +519,37 @@ const SITE_CONFIG = {
 
   async function resolveLatestGitHubRelease() {
     if (!SITE_CONFIG.autoFetchLatestRelease || !SITE_CONFIG.githubRepo) return;
+    const headers = { Accept: "application/vnd.github+json" };
     try {
-      const res = await fetch(`https://api.github.com/repos/${SITE_CONFIG.githubRepo}/releases/latest`, {
-        headers: { Accept: "application/vnd.github+json" },
-      });
-      if (!res.ok) return;
-      const release = await res.json();
+      let published = [];
+      try {
+        const res = await fetch(
+          `https://api.github.com/repos/${SITE_CONFIG.githubRepo}/releases?per_page=100`,
+          { headers }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            published = data.filter((r) => r && !r.draft);
+          }
+        }
+      } catch {}
+
+      if (!published.length) {
+        const fallbackRes = await fetch(
+          `https://api.github.com/repos/${SITE_CONFIG.githubRepo}/releases/latest`,
+          { headers }
+        );
+        if (!fallbackRes.ok) return;
+        const latest = await fallbackRes.json();
+        if (latest && !latest.draft) {
+          published = [latest];
+        }
+      }
+
+      if (!published.length) return;
+
+      const release = published.find((r) => !r.prerelease) || published[0];
       if (release && typeof release.tag_name === "string" && release.tag_name.trim()) {
         const tag = release.tag_name.trim();
         releaseState.version = tag.startsWith("v") ? tag : `v${tag}`;
@@ -543,12 +568,18 @@ const SITE_CONFIG = {
             releaseState.winSizeLabel = `~${Math.max(1, Math.round(win.size / (1024 * 1024)))} MB`;
           }
         }
-        const totalDownloads = release.assets.reduce(
-          (sum, a) => sum + (a && typeof a.download_count === "number" ? a.download_count : 0),
-          0
-        );
-        if (totalDownloads > 0) releaseState.downloadCount = totalDownloads;
       }
+      const totalDownloads = published.reduce((sum, rel) => {
+        if (!rel || !Array.isArray(rel.assets)) return sum;
+        return (
+          sum +
+          rel.assets.reduce(
+            (relSum, a) => relSum + (a && typeof a.download_count === "number" ? a.download_count : 0),
+            0
+          )
+        );
+      }, 0);
+      if (totalDownloads > 0) releaseState.downloadCount = totalDownloads;
       applyReleaseStateToDom();
     } catch {}
   }
